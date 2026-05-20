@@ -125,11 +125,12 @@ struct ChannelThreadView: View {
 
 struct MessageBubble: View {
     let message: ChannelMessage
+    @ObservedObject var nameResolver = PeerNameResolver.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(message.fromId.prefix(12).description)
+                Text(nameResolver.resolve(message.fromId))
                     .font(.caption.bold())
                     .foregroundStyle(.blue)
 

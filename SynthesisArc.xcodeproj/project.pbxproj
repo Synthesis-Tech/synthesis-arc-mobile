@@ -8,9 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		14985EEF0BAA2197BBF97ED9 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251189BEAEE89C3B04ABA29F /* AppConfig.swift */; };
+		23A12CB0E41F8B43780DF3CA /* PeerNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */; };
 		27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */; };
 		3036CFDD8D350ACCB6FB3F44 /* FleetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED953092A7C1AA11748D1ACC /* FleetService.swift */; };
 		37FF71386AE8F329F2B518E4 /* DaemonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D745ACBC8DB866EC57F4EAD /* DaemonClient.swift */; };
+		4B2B61D7DD8FE3E03D017733 /* PeerNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */; };
 		6E2F167E767AD9CECBE1D6EF /* ChannelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166D4F82477909F6F243D29 /* ChannelsView.swift */; };
 		896582FD393CC095FB2679B3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B1646DAC21E466B81DCF4 /* ContentView.swift */; };
 		9177F817C920DB35E60568E0 /* SynthesisArcApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */; };
@@ -41,6 +43,7 @@
 		21DC23421AF463529A5B3BA5 /* SynthesisArc.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		251189BEAEE89C3B04ABA29F /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		76DC47F8820FFAB8FF64EBB6 /* SynthesisArc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerNameResolver.swift; sourceTree = "<group>"; };
 		8A5DEF84096042D1D77327EB /* ChannelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelService.swift; sourceTree = "<group>"; };
 		9698B30298770DAF3F3F320D /* AgentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailView.swift; sourceTree = "<group>"; };
 		9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardView.swift; sourceTree = "<group>"; };
@@ -77,6 +80,7 @@
 				251189BEAEE89C3B04ABA29F /* AppConfig.swift */,
 				8A5DEF84096042D1D77327EB /* ChannelService.swift */,
 				ED953092A7C1AA11748D1ACC /* FleetService.swift */,
+				877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -209,6 +213,7 @@
 				27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */,
 				D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */,
 				D39F14C151666093F43A0F68 /* Models.swift in Sources */,
+				23A12CB0E41F8B43780DF3CA /* PeerNameResolver.swift in Sources */,
 				9177F817C920DB35E60568E0 /* SynthesisArcApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -228,6 +233,7 @@
 				9BC13EAB07BD1A32B9D1E6EF /* FleetView.swift in Sources */,
 				EA7279C643A89BCAEEF988B0 /* MenuBarView.swift in Sources */,
 				C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */,
+				4B2B61D7DD8FE3E03D017733 /* PeerNameResolver.swift in Sources */,
 				C2F63FE71EA8D07CA66D3FC5 /* SynthesisArcApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
