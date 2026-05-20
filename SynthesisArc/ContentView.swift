@@ -19,6 +19,13 @@ struct ContentView: View {
                 .tabItem {
                     Label("Blackboard", systemImage: "list.clipboard.fill")
                 }
+
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gear")
+            }
         }
         #if os(macOS)
         .frame(minWidth: 800, minHeight: 600)

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14985EEF0BAA2197BBF97ED9 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251189BEAEE89C3B04ABA29F /* AppConfig.swift */; };
 		27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */; };
 		3036CFDD8D350ACCB6FB3F44 /* FleetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED953092A7C1AA11748D1ACC /* FleetService.swift */; };
 		37FF71386AE8F329F2B518E4 /* DaemonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D745ACBC8DB866EC57F4EAD /* DaemonClient.swift */; };
@@ -27,6 +28,7 @@
 		C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
 		D39F14C151666093F43A0F68 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
 		D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */; };
+		E059DAD4B68014096DC14084 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251189BEAEE89C3B04ABA29F /* AppConfig.swift */; };
 		EA7279C643A89BCAEEF988B0 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */; };
 		FD41102344CE2BB4F72DE78C /* DaemonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D745ACBC8DB866EC57F4EAD /* DaemonClient.swift */; };
 /* End PBXBuildFile section */
@@ -37,6 +39,7 @@
 		1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		20E1BB917913570B5C15453A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		21DC23421AF463529A5B3BA5 /* SynthesisArc.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		251189BEAEE89C3B04ABA29F /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		76DC47F8820FFAB8FF64EBB6 /* SynthesisArc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A5DEF84096042D1D77327EB /* ChannelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelService.swift; sourceTree = "<group>"; };
 		9698B30298770DAF3F3F320D /* AgentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailView.swift; sourceTree = "<group>"; };
@@ -71,6 +74,7 @@
 		7D51C7E1F808321747AD0B9C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				251189BEAEE89C3B04ABA29F /* AppConfig.swift */,
 				8A5DEF84096042D1D77327EB /* ChannelService.swift */,
 				ED953092A7C1AA11748D1ACC /* FleetService.swift */,
 			);
@@ -195,6 +199,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B464A4B05242CD2EBA9A2EE4 /* AgentDetailView.swift in Sources */,
+				14985EEF0BAA2197BBF97ED9 /* AppConfig.swift in Sources */,
 				BEB9DD6C30F05AD632876345 /* BlackboardView.swift in Sources */,
 				B6232A732059650BB46DA54E /* ChannelService.swift in Sources */,
 				6E2F167E767AD9CECBE1D6EF /* ChannelsView.swift in Sources */,
@@ -213,6 +218,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C35020CA069877E8514683EC /* AgentDetailView.swift in Sources */,
+				E059DAD4B68014096DC14084 /* AppConfig.swift in Sources */,
 				A2AB0CC32562D533663F936A /* BlackboardView.swift in Sources */,
 				C90C48163A7D96679CEB15A5 /* ChannelService.swift in Sources */,
 				AF4AB87A8111C356172E7DD2 /* ChannelsView.swift in Sources */,
