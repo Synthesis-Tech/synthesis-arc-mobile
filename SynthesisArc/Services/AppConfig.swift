@@ -7,8 +7,9 @@ import SwiftUI
 class AppConfig: ObservableObject {
     static let shared = AppConfig()
 
-    /// Daemon host — Tailscale IP of the machine running agent-hooks
-    @AppStorage("daemon.host") var daemonHost = "100.111.226.82"
+    /// Daemon host — gmktec-k9 (always-on, systemd-managed, APC UPS-backed)
+    /// macbook-pro (100.111.226.82) is the dev workstation — sleeps when lid closes
+    @AppStorage("daemon.host") var daemonHost = "100.123.250.101"
 
     /// Daemon port
     @AppStorage("daemon.port") var daemonPort = 7899

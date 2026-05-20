@@ -96,7 +96,20 @@ struct AgentDetailView: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                actionButton("DM", icon: "envelope.fill", color: .blue)
+                NavigationLink(destination: DMView(peer: peer)) {
+                    VStack(spacing: 4) {
+                        Image(systemName: "envelope.fill")
+                            .font(.title3)
+                        Text("DM")
+                            .font(.caption2)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue.opacity(0.1))
+                    .foregroundStyle(.blue)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+
                 actionButton("History", icon: "clock.fill", color: .purple)
                 actionButton("Memories", icon: "brain.fill", color: .green)
             }
