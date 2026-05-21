@@ -92,8 +92,9 @@ class FleetService: ObservableObject {
     }
 
     private func startPolling() {
-        // Poll every 10 seconds — SSE replaces this when wired
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        // Poll every 30 seconds — reduced from 10s to avoid overwhelming daemon
+        // SSE push (Zahra's channel_send broadcast) will replace this
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.refresh()
             }
