@@ -10,6 +10,11 @@ struct ContentView: View {
                     Label("Fleet", systemImage: "circle.grid.3x3.fill")
                 }
 
+            InboxView()
+                .tabItem {
+                    Label("Inbox", systemImage: "tray.fill")
+                }
+
             ChannelsView()
                 .tabItem {
                     Label("Channels", systemImage: "bubble.left.and.bubble.right.fill")

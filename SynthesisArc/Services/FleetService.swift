@@ -30,12 +30,14 @@ class FleetService: ObservableObject {
             )
             myPeerId = response.peerId.value
             daemonHealthy = response.daemonHealthy
+            print("[FleetService] BOOT OK — peer_id: \(response.peerId.value), healthy: \(response.daemonHealthy), pending DMs: \(response.pendingMessages?.count ?? 0)")
 
             // Pre-populate blackboard from boot response
             if let snapshot = response.blackboardSnapshot {
                 self.blackboard = snapshot.sorted { $0.updatedAt > $1.updatedAt }
             }
         } catch {
+            print("[FleetService] BOOT FAILED: \(error)")
             // Fall back to polling if boot fails
             self.error = "Boot failed: \(error.localizedDescription)"
         }

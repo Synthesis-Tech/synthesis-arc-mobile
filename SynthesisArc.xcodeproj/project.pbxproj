@@ -24,12 +24,14 @@
 		B464A4B05242CD2EBA9A2EE4 /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9698B30298770DAF3F3F320D /* AgentDetailView.swift */; };
 		B6232A732059650BB46DA54E /* ChannelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5DEF84096042D1D77327EB /* ChannelService.swift */; };
 		BB2BD09380E3CF62078BC80A /* FleetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED953092A7C1AA11748D1ACC /* FleetService.swift */; };
+		BD53BBD622BF80556F6C0EE9 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE25B1C5D9879FCE14391A5D /* InboxView.swift */; };
 		BEB9DD6C30F05AD632876345 /* BlackboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */; };
 		C2F63FE71EA8D07CA66D3FC5 /* SynthesisArcApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */; };
 		C35020CA069877E8514683EC /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9698B30298770DAF3F3F320D /* AgentDetailView.swift */; };
 		C6C47F3FABBCE8863730DE38 /* ConnectionStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */; };
 		C90C48163A7D96679CEB15A5 /* ChannelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5DEF84096042D1D77327EB /* ChannelService.swift */; };
 		C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
+		CAD7A44CC846C8E74CC0C159 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE25B1C5D9879FCE14391A5D /* InboxView.swift */; };
 		CD1AB52E212F66F772498969 /* DMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE1F8F1517295169CB2D7C6 /* DMView.swift */; };
 		D39F14C151666093F43A0F68 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
 		D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */; };
@@ -51,6 +53,7 @@
 		8A5DEF84096042D1D77327EB /* ChannelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelService.swift; sourceTree = "<group>"; };
 		9698B30298770DAF3F3F320D /* AgentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailView.swift; sourceTree = "<group>"; };
 		9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardView.swift; sourceTree = "<group>"; };
+		AE25B1C5D9879FCE14391A5D /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthesisArcApp.swift; sourceTree = "<group>"; };
 		DFE1F8F1517295169CB2D7C6 /* DMView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMView.swift; sourceTree = "<group>"; };
 		E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetView.swift; sourceTree = "<group>"; };
@@ -69,6 +72,7 @@
 				F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */,
 				DFE1F8F1517295169CB2D7C6 /* DMView.swift */,
 				E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */,
+				AE25B1C5D9879FCE14391A5D /* InboxView.swift */,
 				1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */,
 			);
 			path = Views;
@@ -221,6 +225,7 @@
 				FD41102344CE2BB4F72DE78C /* DaemonClient.swift in Sources */,
 				3036CFDD8D350ACCB6FB3F44 /* FleetService.swift in Sources */,
 				27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */,
+				BD53BBD622BF80556F6C0EE9 /* InboxView.swift in Sources */,
 				D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */,
 				D39F14C151666093F43A0F68 /* Models.swift in Sources */,
 				23A12CB0E41F8B43780DF3CA /* PeerNameResolver.swift in Sources */,
@@ -243,6 +248,7 @@
 				37FF71386AE8F329F2B518E4 /* DaemonClient.swift in Sources */,
 				BB2BD09380E3CF62078BC80A /* FleetService.swift in Sources */,
 				9BC13EAB07BD1A32B9D1E6EF /* FleetView.swift in Sources */,
+				CAD7A44CC846C8E74CC0C159 /* InboxView.swift in Sources */,
 				EA7279C643A89BCAEEF988B0 /* MenuBarView.swift in Sources */,
 				C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */,
 				4B2B61D7DD8FE3E03D017733 /* PeerNameResolver.swift in Sources */,

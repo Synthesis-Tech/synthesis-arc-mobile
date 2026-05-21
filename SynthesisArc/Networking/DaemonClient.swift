@@ -125,6 +125,12 @@ actor DaemonClient {
         return try JSONDecoder().decode([PeerDM].self, from: data)
     }
 
+    /// GET /poll-messages?to_name=X&mark_delivered=false (name-based lookup)
+    func pollMessagesByName(name: String, markDelivered: Bool = false) async throws -> [PeerDM] {
+        let data = try await get("/poll-messages?to_name=\(name.urlEncoded)&mark_delivered=\(markDelivered)")
+        return try JSONDecoder().decode([PeerDM].self, from: data)
+    }
+
     // MARK: - SSE (Server-Sent Events)
 
     /// Connect to SSE stream at GET /events?peer_id=X
