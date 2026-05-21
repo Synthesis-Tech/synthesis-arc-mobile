@@ -12,7 +12,8 @@ struct SynthesisArcApp: App {
                 .environmentObject(fleetService)
                 .environmentObject(channelService)
                 .task {
-                    // Bootstrap name resolver on launch
+                    // Boot as Daniel's peer — register, join channels, get initial state
+                    await fleetService.bootAsPeer()
                     await nameResolver.refresh()
                 }
         }

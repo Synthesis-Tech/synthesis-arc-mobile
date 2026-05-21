@@ -4,10 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var fleetService: FleetService
 
     var body: some View {
-        VStack(spacing: 0) {
-            ConnectionStatusBar()
-
-            TabView {
+        TabView {
             FleetView()
                 .tabItem {
                     Label("Fleet", systemImage: "circle.grid.3x3.fill")
@@ -30,6 +27,8 @@ struct ContentView: View {
                 Label("Settings", systemImage: "gear")
             }
         }
+        .overlay(alignment: .top) {
+            ConnectionStatusBar()
         }
         #if os(macOS)
         .frame(minWidth: 800, minHeight: 600)

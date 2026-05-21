@@ -7,9 +7,10 @@ import SwiftUI
 class AppConfig: ObservableObject {
     static let shared = AppConfig()
 
-    /// Daemon host — gmktec-k9 (always-on, systemd-managed, APC UPS-backed)
-    /// macbook-pro (100.111.226.82) is the dev workstation — sleeps when lid closes
-    @AppStorage("daemon.host") var daemonHost = "100.123.250.101"
+    /// Daemon host — defaults to localhost for simulator/local dev.
+    /// For physical iOS device over Tailscale: set to 100.111.226.82 (macbook-pro)
+    /// or 100.123.250.101 (gmktec-k9, always-on) in Settings tab.
+    @AppStorage("daemon.host") var daemonHost = "127.0.0.1"
 
     /// Daemon port
     @AppStorage("daemon.port") var daemonPort = 7899

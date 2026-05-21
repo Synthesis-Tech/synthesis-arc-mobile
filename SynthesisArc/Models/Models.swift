@@ -129,6 +129,24 @@ struct BlackboardEntry: Codable, Identifiable {
     }
 }
 
+// MARK: - Boot Response (matches Rust BootResponse)
+
+struct BootResponse: Codable {
+    let peerId: PeerId
+    let pendingMessages: [PeerDM]?
+    let channelHistory: [String: [ChannelMessage]]?
+    let blackboardSnapshot: [BlackboardEntry]?
+    let daemonHealthy: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case peerId = "peer_id"
+        case pendingMessages = "pending_messages"
+        case channelHistory = "channel_history"
+        case blackboardSnapshot = "blackboard_snapshot"
+        case daemonHealthy = "daemon_healthy"
+    }
+}
+
 // MARK: - SSE Notification (matches Rust SseNotification)
 
 struct SseNotification: Codable {

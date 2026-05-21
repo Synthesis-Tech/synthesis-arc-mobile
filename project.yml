@@ -12,21 +12,19 @@ settings:
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
     PRODUCT_NAME: "Synthesis Arc"
-    GENERATE_INFOPLIST_FILE: true
 
 targets:
   SynthesisArc:
     type: application
     platform: [iOS, macOS]
     sources:
-      - SynthesisArc
+      - path: SynthesisArc
+        excludes:
+          - Info.plist
     settings:
       base:
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
-        INFOPLIST_KEY_UILaunchScreen_Generation: true
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_FILE: SynthesisArc/Info.plist
+        GENERATE_INFOPLIST_FILE: false
         SUPPORTS_MACCATALYST: false
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
       configs:

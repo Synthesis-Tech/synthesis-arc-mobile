@@ -9,13 +9,46 @@ actor DaemonClient {
     private let baseURL: URL
     private let session: URLSession
 
-    init(host: String = "100.111.226.82", port: Int = 7899) {
+    init(host: String = "127.0.0.1", port: Int = 7899) {
         self.baseURL = URL(string: "http://\(host):\(port)")!
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10
         config.timeoutIntervalForResource = 30
         self.session = URLSession(configuration: config)
+    }
+
+    // MARK: - Registration
+
+    /// Register this app as a peer in the daemon
+    /// Returns the peer_id for subsequent operations
+    func register(name: String = "daniel-ios", summary: String = "iOS Fleet App") async throws -> String {
+        let body: [String: Any] = [
+            "pid": ProcessInfo.processInfo.processIdentifier,
+            "cwd": "/",
+            "name": name,
+            "summary": summary
+        ]
+        let data = try await post("/register", body: body)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let id = json["id"] as? String {
+            return id
+        }
+        throw DaemonError.decodingError("Failed to parse register response")
+    }
+
+    /// Boot this app as a peer — register + join channels + get blackboard
+    func boot(name: String = "daniel-ios", channels: [String] = ["engineering", "ops"], summary: String = "iOS Fleet App") async throws -> BootResponse {
+        let body: [String: Any] = [
+            "agent_id": name,
+            "pid": ProcessInfo.processInfo.processIdentifier,
+            "cwd": "/",
+            "summary": summary,
+            "boot_channels": channels,
+            "history_depth": 20
+        ]
+        let data = try await post("/boot", body: body)
+        return try JSONDecoder().decode(BootResponse.self, from: data)
     }
 
     // MARK: - Peers (GET /list-peers)

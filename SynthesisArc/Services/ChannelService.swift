@@ -10,7 +10,12 @@ class ChannelService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
 
-    private let daemon = DaemonClient()
+    private var daemon: DaemonClient
+
+    init() {
+        let config = AppConfig.shared
+        self.daemon = DaemonClient(host: config.daemonHost, port: config.daemonPort)
+    }
 
     func loadChannels() async {
         isLoading = true

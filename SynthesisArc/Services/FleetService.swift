@@ -9,12 +9,36 @@ class FleetService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var daemonHealthy = false
+    @Published var myPeerId: String?
 
-    private let daemon = DaemonClient()
+    private var daemon: DaemonClient
     private var refreshTimer: Timer?
 
     init() {
+        let config = AppConfig.shared
+        self.daemon = DaemonClient(host: config.daemonHost, port: config.daemonPort)
         startPolling()
+    }
+
+    /// Boot this app as a peer — registers with daemon, joins channels
+    func bootAsPeer() async {
+        do {
+            let response = try await daemon.boot(
+                name: "daniel-willitzer",
+                channels: ["engineering", "ops"],
+                summary: "Daniel Willitzer — iOS Fleet App"
+            )
+            myPeerId = response.peerId.value
+            daemonHealthy = response.daemonHealthy
+
+            // Pre-populate blackboard from boot response
+            if let snapshot = response.blackboardSnapshot {
+                self.blackboard = snapshot.sorted { $0.updatedAt > $1.updatedAt }
+            }
+        } catch {
+            // Fall back to polling if boot fails
+            self.error = "Boot failed: \(error.localizedDescription)"
+        }
     }
 
     func refresh() async {
