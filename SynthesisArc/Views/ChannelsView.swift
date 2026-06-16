@@ -192,6 +192,25 @@ struct ChannelThreadView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    Task { await refreshHistory() }
+                } label: {
+                    if isLoadingHistory {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .disabled(isLoadingHistory)
+                .accessibilityLabel("Refresh channel")
+            }
+        }
+        .refreshable {
+            await refreshHistory()
+        }
         .onAppear {
             channelService.setActiveChannel(channel.name)
         }
@@ -220,6 +239,12 @@ struct ChannelThreadView: View {
             return "@\(name)"
         }
         return "@\(PeerNameResolver.shared.resolve(message.from))"
+    }
+
+    private func refreshHistory() async {
+        isLoadingHistory = true
+        await channelService.loadHistory(channel: channel.name)
+        isLoadingHistory = false
     }
 
     private func sendMessage() {
