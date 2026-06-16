@@ -1,18 +1,42 @@
 import SwiftUI
 
-/// DM (Direct Message) view for bilateral agent communication
+/// DM view for bilateral agent communication
 struct DMView: View {
     let peer: Peer
-    @State private var messages: [PeerDM] = []
+    @EnvironmentObject var dmService: DMService
     @State private var newMessage = ""
     @State private var isLoading = false
-    @State private var error: String?
+    @State private var sendError: String?
 
-    private let daemon = DaemonClient()
+    private var client: ForgeGraphClient {
+        AppConfig.shared.makeClient()
+    }
+
+    private var messages: [CoordMessage] {
+        dmService.messages(with: peer.agentName)
+    }
+
+    private var localAgentName: String {
+        AppConfig.shared.agentName
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Messages
+            if let err = sendError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(err)
+                        .font(.caption)
+                    Spacer()
+                    Button { sendError = nil } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                }
+                .padding(8)
+                .background(Color.red.opacity(0.1))
+                .foregroundStyle(.red)
+            }
+
             ScrollView {
                 if isLoading && messages.isEmpty {
                     ProgressView("Loading messages...")
@@ -26,7 +50,11 @@ struct DMView: View {
                 } else {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(messages, id: \.id) { msg in
-                            DMBubble(message: msg, peerName: peer.name)
+                            DMBubble(
+                                message: msg,
+                                peerName: peer.agentName,
+                                localAgentName: localAgentName
+                            )
                         }
                     }
                     .padding()
@@ -35,13 +63,18 @@ struct DMView: View {
 
             Divider()
 
-            // Compose bar
             HStack(spacing: 8) {
                 TextField("Message \(displayName)...", text: $newMessage)
                     .textFieldStyle(.roundedBorder)
                     #if os(iOS)
                     .textInputAutocapitalization(.sentences)
                     #endif
+                    .onSubmit {
+                        guard !newMessage.isEmpty else { return }
+                        let text = newMessage
+                        newMessage = ""
+                        Task { await sendDM(text) }
+                    }
 
                 Button {
                     guard !newMessage.isEmpty else { return }
@@ -66,7 +99,7 @@ struct DMView: View {
     }
 
     private var displayName: String {
-        peer.name.split(separator: "-")
+        peer.agentName.split(separator: "-")
             .map { $0.prefix(1).uppercased() + $0.dropFirst() }
             .joined(separator: " ")
     }
@@ -74,32 +107,33 @@ struct DMView: View {
     private func loadMessages() async {
         isLoading = true
         do {
-            // Poll messages addressed to this peer (peek without marking delivered)
-            messages = try await daemon.pollMessages(peerId: peer.id, markDelivered: false)
+            let polled = try await client.pollMessages()
+            dmService.seedInbound(polled)
         } catch {
-            self.error = error.localizedDescription
+            print("[DMView] loadMessages error: \(error)")
         }
         isLoading = false
     }
 
     private func sendDM(_ content: String) async {
+        sendError = nil
+        let optimistic = dmService.makeOptimisticOutbound(to: peer.agentName, content: content)
+        dmService.appendOutbound(optimistic)
         do {
-            try await daemon.sendDM(fromId: "ios-app", toName: peer.name, content: content)
-            // Reload to show sent message
-            await loadMessages()
+            try await client.sendDM(to: peer.agentName, content: content)
         } catch {
-            self.error = error.localizedDescription
+            sendError = "Send failed: \(error.localizedDescription)"
         }
     }
 }
 
 struct DMBubble: View {
-    let message: PeerDM
+    let message: CoordMessage
     let peerName: String
+    let localAgentName: String
 
     private var isFromPeer: Bool {
-        // If the from_id contains the peer name pattern, it's from the peer
-        message.fromId.contains(peerName) || message.fromId.starts(with: "name:")
+        message.isFromPeer(peerAgentName: peerName, localAgent: localAgentName)
     }
 
     var body: some View {
@@ -111,7 +145,7 @@ struct DMBubble: View {
                     .font(.callout)
                     .textSelection(.enabled)
 
-                Text(formatTime(message.sentAt))
+                Text(message.sentAtDisplay)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -121,13 +155,5 @@ struct DMBubble: View {
 
             if isFromPeer { Spacer(minLength: 40) }
         }
-    }
-
-    private func formatTime(_ iso: String) -> String {
-        if let tIndex = iso.firstIndex(of: "T"),
-           let dotIndex = iso.firstIndex(of: ".") ?? iso.firstIndex(of: "+") {
-            return String(iso[iso.index(after: tIndex)..<dotIndex].prefix(5))
-        }
-        return iso.suffix(8).description
     }
 }

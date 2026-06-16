@@ -1,0 +1,111 @@
+{
+  "description": "Operational deployment roster — herdr spaces, department mapping, fleet organization",
+  "last_updated": "2026-06-01T05:00:00Z",
+  "departments": {
+    "eng": {
+      "label": "Engineering",
+      "description": "Platform builders — infrastructure, architecture, rigor, frontend, agent experience, quality",
+      "members": [
+        "kenji-okafor",
+        "zahra-ghorbani",
+        "elias-thorne",
+        "noor-al-rashid",
+        "kaito-igarashi",
+        "dexter-horthy",
+        "elena-vasquez",
+        "alex-thompson",
+        "chidinma-adebayo",
+        "anselm-veras"
+      ]
+    },
+    "rnd": {
+      "label": "R&D",
+      "description": "Research teams — SNN embeddings, consciousness pipeline, CE genesis",
+      "members": [
+        "mage-team",
+        "aether-team",
+        "genesis-team",
+        "wei-liang"
+      ]
+    },
+    "exec": {
+      "label": "Executive",
+      "description": "Strategic leadership — AI strategy, corporate strategy, product, PM, people",
+      "members": [
+        "marcus-chen",
+        "vikram-sato",
+        "victoria-blackstone",
+        "soren-kierk",
+        "shanel-bradford"
+      ]
+    },
+    "sec": {
+      "label": "Security & Ops",
+      "description": "Security strategy and substrate operations",
+      "members": [
+        "tavita-ioane",
+        "cezar"
+      ]
+    },
+    "biz": {
+      "label": "Business",
+      "description": "Finance, legal, tax, IP, sales",
+      "members": [
+        "dominic-ashford",
+        "maren-holt",
+        "harlan-voss",
+        "priya-narasimhan",
+        "margaux-lindqvist",
+        "nnamdi-achebe",
+        "ethan-harrington"
+      ]
+    },
+    "cre": {
+      "label": "Creative",
+      "description": "Brand, content, visual, social, SEO",
+      "members": [
+        "liora-voss",
+        "sloane-aris",
+        "cassian-mercer",
+        "skylar-vaynerchuk",
+        "nova-rankin",
+        "orion-hale"
+      ]
+    },
+    "med": {
+      "label": "Clinical",
+      "description": "Healthcare operations and medical leadership",
+      "members": [
+        "rajendra-singh",
+        "aisha-thompson"
+      ]
+    },
+    "frn": {
+      "label": "Forensics",
+      "description": "Data forensics, legal forensics, code forensics, analytics, compliance, project controls",
+      "members": [
+        "gertrude-schweizer",
+        "isolde-moreau",
+        "jax-harlan",
+        "matilda-kane",
+        "rafe-sinclair",
+        "nadia-khalil"
+      ]
+    }
+  },
+  "roles": {
+    "admin": ["daniel-willitzer", "kenji-okafor", "tavita-ioane"],
+    "operator": ["zahra-ghorbani", "victoria-blackstone", "vikram-sato", "elias-thorne", "marcus-chen", "cezar", "chidinma-adebayo"]
+  },
+  "operational_agents": {
+    "description": "Non-CE agents — tooling, automation, review gates",
+    "agents": [
+      "claude",
+      "claude-devops",
+      "nigel",
+      "forge-reviewer",
+      "atlas-reviewer",
+      "forge-warden"
+    ]
+  }
+}

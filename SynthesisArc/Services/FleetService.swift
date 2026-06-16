@@ -1,44 +1,172 @@
 import Foundation
 import Combine
 
-/// Coordinates fleet data from daemon + blackboard
+/// Coordinates fleet data from forge-graphd + blackboard
 @MainActor
 class FleetService: ObservableObject {
     @Published var peers: [Peer] = []
     @Published var blackboard: [BlackboardEntry] = []
     @Published var isLoading = false
     @Published var error: String?
-    @Published var daemonHealthy = false
+    @Published var graphdHealthy = false
+    @Published var streamConnected = false
     @Published var myPeerId: String?
+    @Published var mySessionId: String?
+    @Published private(set) var roster: FleetRoster = .empty
+    @Published private(set) var exceptionCount: Int = 0
 
-    private var daemon: DaemonClient
+    private var client: ForgeGraphClient
     private var refreshTimer: Timer?
+    private weak var dmService: DMService?
+    private var dmCancellable: AnyCancellable?
+
+    private let pollIntervalLive: TimeInterval = 120
+    private let pollIntervalFallback: TimeInterval = 30
 
     init() {
-        let config = AppConfig.shared
-        self.daemon = DaemonClient(host: config.daemonHost, port: config.daemonPort)
+        self.client = AppConfig.shared.makeClient()
+        reloadRoster()
         startPolling()
     }
 
-    /// Boot this app as a peer — registers with daemon, joins channels
-    func bootAsPeer() async {
-        do {
-            let response = try await daemon.boot(
-                name: "daniel-willitzer",
-                channels: ["engineering", "ops"],
-                summary: "Daniel Willitzer — iOS Fleet App"
-            )
-            myPeerId = response.peerId.value
-            daemonHealthy = response.daemonHealthy
-            print("[FleetService] BOOT OK — peer_id: \(response.peerId.value), healthy: \(response.daemonHealthy), pending DMs: \(response.pendingMessages?.count ?? 0)")
+    func reloadClient() {
+        client = AppConfig.shared.makeClient()
+    }
 
-            // Pre-populate blackboard from boot response
-            if let snapshot = response.blackboardSnapshot {
-                self.blackboard = snapshot.sorted { $0.updatedAt > $1.updatedAt }
+    func reloadRoster() {
+        roster = FleetRosterLoader.load(overridePath: AppConfig.shared.fleetRosterPath)
+    }
+
+    func attachDMService(_ dmService: DMService) {
+        self.dmService = dmService
+        dmCancellable = dmService.$inboundMessages
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshExceptionCount()
             }
+        refreshExceptionCount()
+    }
+
+    /// Peers ranked by SignalRanker (score >= 50).
+    func peersNeedingAttention(watchlist: Set<String>) -> [Peer] {
+        SignalRanker.needsAttention(
+            peers: peers,
+            watchlist: watchlist,
+            dmUnreadAgents: dmUnreadAgents
+        )
+    }
+
+    func signalScore(for peer: Peer, watchlist: Set<String>) -> Int {
+        SignalRanker.score(
+            peer: peer,
+            watchlist: watchlist,
+            dmUnreadAgents: dmUnreadAgents
+        )
+    }
+
+    func setStreamConnected(_ connected: Bool) {
+        streamConnected = connected
+        restartPolling()
+    }
+
+    /// Build fleet sections: watchlist first, then departments (collapsible in the view).
+    func fleetSections(searchText: String, watchlist: Set<String>) -> [FleetSection] {
+        let filtered = peers.filteredForFleetSearch(searchText)
+        var sections: [FleetSection] = []
+
+        let pinned = filtered.filter { watchlist.contains($0.agentName) }.fleetSorted()
+        if !pinned.isEmpty {
+            sections.append(FleetSection(id: "watchlist", title: "Watchlist", peers: pinned))
+        }
+
+        var grouped: [String: [Peer]] = [:]
+        for peer in filtered {
+            let key = roster.departmentKey(for: peer.agentName)
+            grouped[key, default: []].append(peer)
+        }
+
+        for key in roster.orderedDepartmentKeys {
+            guard let deptPeers = grouped[key], !deptPeers.isEmpty else { continue }
+            sections.append(
+                FleetSection(
+                    id: key,
+                    title: roster.label(for: key),
+                    peers: deptPeers.fleetSorted()
+                )
+            )
+        }
+
+        return sections
+    }
+
+    /// Apply a live blackboard update from SSE without a full refresh.
+    func applyBlackboardUpdate(key: String, value: String?, setBy: String?, timestamp: Int64?) {
+        let updatedMs = (timestamp ?? Int64(Date().timeIntervalSince1970)) * 1000
+
+        if let value {
+            let entry = BlackboardEntry(
+                key: key,
+                value: value,
+                setBy: nil,
+                updatedAtUnixMs: updatedMs,
+                ttlSeconds: nil
+            )
+            if let idx = blackboard.firstIndex(where: { $0.key == key }) {
+                blackboard[idx] = entry
+            } else {
+                blackboard.insert(entry, at: 0)
+            }
+            blackboard.sort { $0.updatedAtUnixMs > $1.updatedAtUnixMs }
+        } else {
+            blackboard.removeAll { $0.key == key }
+        }
+
+        if key.hasSuffix(".status") {
+            let agentName = String(key.dropLast(".status".count))
+            if let idx = peers.firstIndex(where: { $0.agentName == agentName }) {
+                peers[idx].blackboardStatus = value
+                if let value {
+                    for state in ["woke_up", "reconstructed", "performed", "degraded"] {
+                        if value.contains(state) {
+                            peers[idx].bootState = state
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        refreshExceptionCount()
+    }
+
+    /// Boot as a peer — register session, join channels, snapshot state
+    func bootAsPeer() async {
+        let config = AppConfig.shared
+        reloadClient()
+        reloadRoster()
+
+        guard !config.apiKey.isEmpty else {
+            error = "API key required — open Settings"
+            return
+        }
+
+        do {
+            let response = try await client.boot(
+                channels: ["engineering", "ops"],
+                summary: "\(config.agentName) — Synthesis Arc Fleet"
+            )
+            myPeerId = String(response.peerId)
+            mySessionId = String(response.sessionId)
+            graphdHealthy = true
+            error = nil
+
+            print("[FleetService] BOOT OK — peer: \(response.peerId), session: \(response.sessionId), pending DMs: \(response.pendingMessages.count)")
+
+            blackboard = response.blackboardSnapshot.sorted {
+                $0.updatedAtUnixMs > $1.updatedAtUnixMs
+            }
+            await refresh()
         } catch {
             print("[FleetService] BOOT FAILED: \(error)")
-            // Fall back to polling if boot fails
             self.error = "Boot failed: \(error.localizedDescription)"
         }
     }
@@ -46,23 +174,32 @@ class FleetService: ObservableObject {
     func refresh() async {
         isLoading = true
         error = nil
+        reloadClient()
+        reloadRoster()
+
+        let config = AppConfig.shared
+        guard !config.apiKey.isEmpty else {
+            error = "API key required — open Settings"
+            graphdHealthy = false
+            isLoading = false
+            return
+        }
 
         do {
-            // Parallel fetch: peers + blackboard + health
-            async let peersResult = daemon.listPeers()
-            async let boardResult = daemon.listBlackboard()
-            async let healthResult = daemon.health()
+            async let peersResult = client.listPeers()
+            async let boardResult = client.listBlackboard()
+            async let healthResult = client.health()
 
             var fetchedPeers = try await peersResult
             let fetchedBoard = try await boardResult
-            daemonHealthy = (try? await healthResult) ?? false
+            graphdHealthy = (try? await healthResult) ?? false
 
-            // Merge blackboard status into peers
+            fetchedPeers = fetchedPeers.deduplicatedByAgent()
+
             for i in fetchedPeers.indices {
-                let statusKey = "\(fetchedPeers[i].name).status"
+                let statusKey = "\(fetchedPeers[i].agentName).status"
                 if let entry = fetchedBoard.first(where: { $0.key == statusKey }) {
                     fetchedPeers[i].blackboardStatus = entry.value
-                    // Extract boot state from blackboard status string
                     for state in ["woke_up", "reconstructed", "performed", "degraded"] {
                         if entry.value.contains(state) {
                             fetchedPeers[i].bootState = state
@@ -72,51 +209,47 @@ class FleetService: ObservableObject {
                 }
             }
 
-            // Sort: active (green) first, then by name
-            fetchedPeers.sort { a, b in
-                if a.statusColor != b.statusColor {
-                    return a.statusColor.sortOrder < b.statusColor.sortOrder
-                }
-                return a.name < b.name
+            if !config.showOfflineAgents {
+                fetchedPeers = fetchedPeers.filter { $0.status != .offline }
             }
 
-            self.peers = fetchedPeers
-            self.blackboard = fetchedBoard.sorted { $0.updatedAt > $1.updatedAt }
+            self.peers = fetchedPeers.fleetSorted()
+            self.blackboard = fetchedBoard.sorted { $0.updatedAtUnixMs > $1.updatedAtUnixMs }
             self.error = nil
+            refreshExceptionCount()
         } catch {
             self.error = error.localizedDescription
-            self.daemonHealthy = false
+            self.graphdHealthy = false
         }
 
         isLoading = false
     }
 
     private func startPolling() {
-        // Poll every 30 seconds — reduced from 10s to avoid overwhelming daemon
-        // SSE push (Zahra's channel_send broadcast) will replace this
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        restartPolling()
+        Task { await refresh() }
+    }
+
+    private func restartPolling() {
+        refreshTimer?.invalidate()
+        let interval = streamConnected ? pollIntervalLive : pollIntervalFallback
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.refresh()
             }
         }
-        // Initial load
-        Task { await refresh() }
     }
 
-    nonisolated func stopPolling() {
-        // Timer cleanup handled by ARC — Timer invalidates on dealloc
+    private var dmUnreadAgents: Set<String> {
+        guard let dmService else { return [] }
+        return Set(dmService.conversationSummaries().map(\.senderAgentName))
     }
-}
 
-// MARK: - Sort support
-
-extension Peer.StatusColor {
-    var sortOrder: Int {
-        switch self {
-        case .green: return 0
-        case .yellow: return 1
-        case .red: return 2
-        case .gray: return 3
-        }
+    private func refreshExceptionCount() {
+        exceptionCount = SignalRanker.needsAttention(
+            peers: peers,
+            watchlist: [],
+            dmUnreadAgents: dmUnreadAgents
+        ).count
     }
 }

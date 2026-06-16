@@ -1,22 +1,28 @@
 import SwiftUI
 
-/// Inbox view — shows DMs sent to daniel-willitzer
+/// Inbox — inbound DMs grouped by sender (Slack-style DM sidebar)
 struct InboxView: View {
+    @EnvironmentObject var streamService: CoordinationStreamService
+    @EnvironmentObject var dmService: DMService
     @EnvironmentObject var fleetService: FleetService
-    @State private var messages: [PeerDM] = []
     @State private var isLoading = false
     @State private var error: String?
-    @ObservedObject var nameResolver = PeerNameResolver.shared
 
-    private let daemon = DaemonClient()
+    private var client: ForgeGraphClient {
+        AppConfig.shared.makeClient()
+    }
+
+    private var conversations: [DMConversationSummary] {
+        dmService.conversationSummaries()
+    }
 
     var body: some View {
         NavigationStack {
             Group {
-                if isLoading && messages.isEmpty {
+                if isLoading && conversations.isEmpty {
                     ProgressView("Loading inbox...")
                         .padding(.top, 40)
-                } else if let error, messages.isEmpty {
+                } else if let error, conversations.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
@@ -27,29 +33,21 @@ struct InboxView: View {
                         Button("Retry") { Task { await loadInbox() } }
                     }
                     .padding(.top, 40)
-                } else if messages.isEmpty {
+                } else if conversations.isEmpty {
                     ContentUnavailableView(
                         "No Messages",
                         systemImage: "tray",
-                        description: Text("DMs from the fleet will appear here")
+                        description: Text(streamService.isConnected
+                            ? "Waiting for fleet DMs..."
+                            : "DMs appear when forge-graphd is reachable")
                     )
                 } else {
-                    List(messages, id: \.id) { msg in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(nameResolver.resolve(msg.fromId))
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(.blue)
-                                Spacer()
-                                Text(formatTime(msg.sentAt))
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                            Text(msg.content)
-                                .font(.callout)
-                                .textSelection(.enabled)
+                    List(conversations) { conversation in
+                        NavigationLink {
+                            DMView(peer: peer(for: conversation.senderAgentName))
+                        } label: {
+                            conversationRow(conversation)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -69,31 +67,64 @@ struct InboxView: View {
             .refreshable {
                 await loadInbox()
             }
+            .onAppear {
+                streamService.markInboxRead()
+            }
         }
+    }
+
+    private func conversationRow(_ conversation: DMConversationSummary) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(displayName(for: conversation.senderAgentName))
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                Spacer()
+                Text(conversation.latestMessage.sentAtDisplay)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Text(conversation.latestMessage.content)
+                .font(.callout)
+                .lineLimit(2)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            if conversation.messageCount > 1 {
+                Text("\(conversation.messageCount) messages")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func displayName(for agentName: String) -> String {
+        agentName.split(separator: "-")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
+    }
+
+    private func peer(for agentName: String) -> Peer {
+        fleetService.peers.first(where: { $0.agentName == agentName })
+            ?? Peer(
+                agentName: agentName,
+                pid: nil,
+                cwd: nil,
+                gitRoot: nil,
+                summary: nil,
+                status: .offline
+            )
     }
 
     private func loadInbox() async {
         isLoading = true
         error = nil
         do {
-            // Poll DMs using the registered peer_id, or fallback to name-based
-            if let peerId = fleetService.myPeerId {
-                messages = try await daemon.pollMessages(peerId: peerId, markDelivered: false)
-            } else {
-                // Try name-based poll
-                messages = try await daemon.pollMessagesByName(name: "daniel-willitzer", markDelivered: false)
-            }
+            let polled = try await client.pollMessages()
+            streamService.seedInbox(polled)
         } catch {
             self.error = error.localizedDescription
         }
         isLoading = false
-    }
-
-    private func formatTime(_ iso: String) -> String {
-        if let tIndex = iso.firstIndex(of: "T"),
-           let dotIndex = iso.firstIndex(of: ".") ?? iso.firstIndex(of: "+") {
-            return String(iso[iso.index(after: tIndex)..<dotIndex].prefix(5))
-        }
-        return iso.suffix(8).description
     }
 }

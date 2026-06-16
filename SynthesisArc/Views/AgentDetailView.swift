@@ -4,6 +4,7 @@ import SwiftUI
 struct AgentDetailView: View {
     let peer: Peer
     @EnvironmentObject var channelService: ChannelService
+    @State private var showDirectorSheet = false
 
     var body: some View {
         ScrollView {
@@ -17,8 +18,8 @@ struct AgentDetailView: View {
                 }
 
                 // Summary
-                if !peer.summary.isEmpty {
-                    summarySection(peer.summary)
+                if let summary = peer.summary, !summary.isEmpty {
+                    summarySection(summary)
                 }
 
                 // Quick actions
@@ -30,6 +31,9 @@ struct AgentDetailView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .sheet(isPresented: $showDirectorSheet) {
+            QuickActionsSheet(peer: peer)
+        }
     }
 
     // MARK: - Sections
@@ -110,27 +114,22 @@ struct AgentDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
 
-                actionButton("History", icon: "clock.fill", color: .purple)
-                actionButton("Memories", icon: "brain.fill", color: .green)
+                Button {
+                    showDirectorSheet = true
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "person.badge.key.fill")
+                            .font(.title3)
+                        Text("Director")
+                            .font(.caption2)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.orange.opacity(0.1))
+                    .foregroundStyle(.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
-        }
-    }
-
-    private func actionButton(_ label: String, icon: String, color: Color) -> some View {
-        Button {
-            // Phase 1: placeholder actions
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.title3)
-                Text(label)
-                    .font(.caption2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(color.opacity(0.1))
-            .foregroundStyle(color)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
     }
 

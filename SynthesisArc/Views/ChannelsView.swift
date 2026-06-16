@@ -11,7 +11,7 @@ struct ChannelsView: View {
                     ContentUnavailableView(
                         "No Channels",
                         systemImage: "bubble.left.and.bubble.right",
-                        description: Text("Channels will appear when the daemon is reachable.")
+                        description: Text("Channels appear when forge-graphd is reachable.")
                     )
                 } else {
                     List(channelService.channels) { channel in
@@ -37,15 +37,15 @@ struct ChannelRow: View {
 
     var body: some View {
         HStack {
-            Image(systemName: channel.visibility == "private" ? "lock.fill" : "number")
+            Image(systemName: channel.visibility == .private ? "lock.fill" : "number")
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(channel.name)
                     .font(.body.bold())
-                if !channel.description.isEmpty {
-                    Text(channel.description)
+                if let description = channel.description, !description.isEmpty {
+                    Text(description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -65,23 +65,42 @@ struct ChannelRow: View {
     }
 }
 
-/// Channel thread view — message history + compose
 struct ChannelThreadView: View {
     let channel: Channel
     @EnvironmentObject var channelService: ChannelService
     @State private var newMessage = ""
+    @State private var replyTo: CoordMessage?
 
-    private var messages: [ChannelMessage] {
+    private var messages: [CoordMessage] {
         channelService.messages[channel.name] ?? []
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Messages
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(messages) { msg in
-                        MessageBubble(message: msg)
+                    ForEach(messages, id: \.id) { msg in
+                        MessageBubble(
+                            message: msg,
+                            parentMessage: parentMessage(for: msg)
+                        )
+                        .contextMenu {
+                            Button {
+                                replyTo = msg
+                            } label: {
+                                Label("Reply", systemImage: "arrowshape.turn.up.left")
+                            }
+                        }
+                        #if os(iOS)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button {
+                                replyTo = msg
+                            } label: {
+                                Label("Reply", systemImage: "arrowshape.turn.up.left")
+                            }
+                            .tint(.blue)
+                        }
+                        #endif
                     }
                 }
                 .padding()
@@ -89,29 +108,52 @@ struct ChannelThreadView: View {
 
             Divider()
 
-            // Compose bar
-            HStack(spacing: 8) {
-                TextField("Message #\(channel.name)", text: $newMessage)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                    .textInputAutocapitalization(.sentences)
-                    #endif
+            VStack(spacing: 0) {
+                if let reply = replyTo {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrowshape.turn.up.left.fill")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
 
-                Button {
-                    guard !newMessage.isEmpty else { return }
-                    let text = newMessage
-                    newMessage = ""
-                    Task {
-                        // TODO: use actual peer_id from app identity
-                        await channelService.send(channel: channel.name, fromId: "ios-app", content: text)
+                        Text("Replying to \(replyTargetMention(for: reply))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Button {
+                            replyTo = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.08))
+
+                    Divider()
                 }
-                .disabled(newMessage.isEmpty)
+
+                HStack(spacing: 8) {
+                    TextField("Message #\(channel.name)", text: $newMessage)
+                        .textFieldStyle(.roundedBorder)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.sentences)
+                        #endif
+
+                    Button {
+                        sendMessage()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                    }
+                    .disabled(newMessage.isEmpty)
+                }
+                .padding()
             }
-            .padding()
         }
         .navigationTitle("#\(channel.name)")
         #if os(iOS)
@@ -121,28 +163,55 @@ struct ChannelThreadView: View {
             await channelService.loadHistory(channel: channel.name)
         }
     }
+
+    private func parentMessage(for message: CoordMessage) -> CoordMessage? {
+        guard let replyToId = message.replyTo else { return nil }
+        return messages.first { $0.id == replyToId }
+    }
+
+    private func replyTargetMention(for message: CoordMessage) -> String {
+        if let name = message.fromAgentName {
+            return "@\(name)"
+        }
+        return "@\(PeerNameResolver.shared.resolve(message.from))"
+    }
+
+    private func sendMessage() {
+        guard !newMessage.isEmpty else { return }
+        let text = newMessage
+        let replyId = replyTo?.id
+        newMessage = ""
+        replyTo = nil
+        Task {
+            await channelService.send(channel: channel.name, content: text, replyTo: replyId)
+        }
+    }
 }
 
 struct MessageBubble: View {
-    let message: ChannelMessage
+    let message: CoordMessage
+    var parentMessage: CoordMessage?
     @ObservedObject var nameResolver = PeerNameResolver.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(nameResolver.resolve(message.fromId))
+                Text(senderName)
                     .font(.caption.bold())
                     .foregroundStyle(.blue)
 
                 Spacer()
 
-                Text(formatTime(message.sentAt))
+                Text(message.sentAtDisplay)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
 
-            Text(message.content)
-                .font(.callout)
+            if let replyToId = message.replyTo {
+                replyQuote(replyToId: replyToId)
+            }
+
+            MentionText(content: message.content)
                 .textSelection(.enabled)
         }
         .padding(10)
@@ -150,13 +219,46 @@ struct MessageBubble: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private func formatTime(_ iso: String) -> String {
-        // Simple time extraction from ISO string
-        if let tIndex = iso.firstIndex(of: "T"),
-           let dotIndex = iso.firstIndex(of: ".") ?? iso.firstIndex(of: "+") {
-            let timeStr = iso[iso.index(after: tIndex)..<dotIndex]
-            return String(timeStr.prefix(5)) // HH:MM
+    @ViewBuilder
+    private func replyQuote(replyToId: NodeId) -> some View {
+        if let parent = parentMessage {
+            HStack(alignment: .top, spacing: 6) {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.blue.opacity(0.5))
+                    .frame(width: 2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(parentSenderName(parent))
+                        .font(.caption2.bold())
+                        .foregroundStyle(.blue)
+
+                    MentionText(content: parent.content, font: .caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(.bottom, 2)
+        } else {
+            Text("↩ replying to message #\(replyToId)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
-        return iso.suffix(8).description
+    }
+
+    private var senderName: String {
+        displayName(for: message)
+    }
+
+    private func parentSenderName(_ parent: CoordMessage) -> String {
+        displayName(for: parent)
+    }
+
+    private func displayName(for message: CoordMessage) -> String {
+        if let name = message.fromAgentName {
+            return name.split(separator: "-")
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: " ")
+        }
+        return nameResolver.resolve(message.from)
     }
 }

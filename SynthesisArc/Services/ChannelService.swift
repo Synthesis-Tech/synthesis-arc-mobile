@@ -1,26 +1,37 @@
 import Foundation
 import Combine
 
-/// Coordinates channel data from daemon
+/// Coordinates channel data from forge-graphd
 @MainActor
 class ChannelService: ObservableObject {
     @Published var channels: [Channel] = []
-    @Published var messages: [String: [ChannelMessage]] = [:]
-    @Published var totalCounts: [String: Int64] = [:]
+    @Published var messages: [String: [CoordMessage]] = [:]
+    @Published var channelUnread: [String: Int] = [:]
+    @Published var channelPreviews: [String: ChannelPreview] = [:]
     @Published var isLoading = false
     @Published var error: String?
 
-    private var daemon: DaemonClient
+    private var client: ForgeGraphClient
+    private var activeChannelName: String?
+
+    var totalChannelUnread: Int {
+        channelUnread.values.reduce(0, +)
+    }
 
     init() {
-        let config = AppConfig.shared
-        self.daemon = DaemonClient(host: config.daemonHost, port: config.daemonPort)
+        self.client = AppConfig.shared.makeClient()
+    }
+
+    func reloadClient() {
+        client = AppConfig.shared.makeClient()
     }
 
     func loadChannels() async {
         isLoading = true
+        reloadClient()
         do {
-            channels = try await daemon.listChannels()
+            channels = try await client.listChannels()
+            error = nil
         } catch {
             self.error = error.localizedDescription
         }
@@ -28,26 +39,63 @@ class ChannelService: ObservableObject {
     }
 
     func loadHistory(channel: String, limit: Int = 50) async {
+        reloadClient()
         do {
-            let response = try await daemon.channelHistory(name: channel, limit: limit)
-            messages[channel] = response.messages
-            totalCounts[channel] = response.totalCount
+            let history = try await client.channelHistory(name: channel, limit: limit)
+            messages[channel] = history
+            if let last = history.max(by: { $0.sentAtUnixMs < $1.sentAtUnixMs }) {
+                updatePreview(channel: channel, message: last)
+            }
+            error = nil
         } catch {
             self.error = error.localizedDescription
         }
     }
 
-    func send(channel: String, fromId: String, content: String) async {
+    func send(channel: String, content: String, replyTo: NodeId? = nil) async {
+        reloadClient()
         do {
-            try await daemon.sendChannelMessage(
-                channel: channel,
-                fromId: fromId,
-                content: content
-            )
-            // Reload history after sending
+            try await client.sendChannelMessage(channel: channel, content: content, replyTo: replyTo)
             await loadHistory(channel: channel)
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Append a message received via SSE (deduped by message id).
+    func appendLiveMessage(channel: String, message: CoordMessage) {
+        var channelMessages = messages[channel] ?? []
+        guard !channelMessages.contains(where: { $0.id == message.id }) else { return }
+        channelMessages.append(message)
+        channelMessages.sort { $0.sentAtUnixMs < $1.sentAtUnixMs }
+        messages[channel] = channelMessages
+        updatePreview(channel: channel, message: message)
+        if activeChannelName != channel {
+            channelUnread[channel, default: 0] += 1
+        }
+    }
+
+    func markChannelRead(_ channel: String) {
+        channelUnread.removeValue(forKey: channel)
+    }
+
+    func setActiveChannel(_ channel: String?) {
+        activeChannelName = channel
+        if let channel {
+            markChannelRead(channel)
+        }
+    }
+
+    private func updatePreview(channel: String, message: CoordMessage) {
+        let from = message.fromAgentName ?? (message.from.map(String.init) ?? "unknown")
+        let preview = ChannelPreview(
+            lastContent: message.content,
+            lastFrom: from,
+            lastTimestamp: message.sentAtUnixMs
+        )
+        if let existing = channelPreviews[channel], existing.lastTimestamp > message.sentAtUnixMs {
+            return
+        }
+        channelPreviews[channel] = preview
     }
 }

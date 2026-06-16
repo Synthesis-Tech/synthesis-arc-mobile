@@ -38,6 +38,8 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>Synthesis Arc alerts you to fleet DMs, @mentions, and degraded agents when the app is in the background.</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

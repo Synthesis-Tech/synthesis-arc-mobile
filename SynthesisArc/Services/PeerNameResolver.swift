@@ -1,23 +1,25 @@
 import Foundation
 
-/// Resolves peer IDs to agent names using the fleet peer registry.
-/// Maintains a local cache refreshed from list-peers.
+/// Resolves NodeIds and agent names for display.
 @MainActor
 class PeerNameResolver: ObservableObject {
     static let shared = PeerNameResolver()
 
-    /// peer_id → agent name cache
     @Published private(set) var nameMap: [String: String] = [:]
 
-    private let daemon = DaemonClient()
+    private var client: ForgeGraphClient
 
-    /// Refresh the name map from the daemon
+    init() {
+        self.client = AppConfig.shared.makeClient()
+    }
+
     func refresh() async {
+        client = AppConfig.shared.makeClient()
         do {
-            let peers = try await daemon.listPeers()
+            let peers = try await client.listPeers()
             var map: [String: String] = [:]
-            for peer in peers {
-                map[peer.id] = peer.name
+            for peer in peers.deduplicatedByAgent() {
+                map[peer.agentName] = peer.agentName
             }
             self.nameMap = map
         } catch {
@@ -25,16 +27,22 @@ class PeerNameResolver: ObservableObject {
         }
     }
 
-    /// Resolve a peer ID to a display name
-    func resolve(_ peerId: String) -> String {
-        if let name = nameMap[peerId] {
+    /// Resolve a session NodeId string to a display name
+    func resolve(_ nodeId: String) -> String {
+        if let name = nameMap[nodeId] {
             return formatName(name)
         }
-        // Fallback: truncated peer ID
-        return String(peerId.prefix(8))
+        if nodeId.allSatisfy(\.isNumber), nodeId.count > 6 {
+            return "#\(nodeId.suffix(6))"
+        }
+        return formatName(nodeId)
     }
 
-    /// Format agent name for display: "kenji-okafor" → "Kenji Okafor"
+    func resolve(_ nodeId: NodeId?) -> String {
+        guard let nodeId else { return "unknown" }
+        return resolve(String(nodeId))
+    }
+
     private func formatName(_ name: String) -> String {
         name.split(separator: "-")
             .map { $0.prefix(1).uppercased() + $0.dropFirst() }

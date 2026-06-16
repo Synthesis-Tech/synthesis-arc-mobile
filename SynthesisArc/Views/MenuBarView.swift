@@ -4,15 +4,40 @@ import SwiftUI
 #if os(macOS)
 struct MenuBarView: View {
     @EnvironmentObject var fleetService: FleetService
+    @AppStorage(FleetWatchlist.storageKey) private var watchlistRaw = ""
+
+    private var watchlist: Set<String> {
+        FleetWatchlist.decode(watchlistRaw)
+    }
+
+    private var menuBarPeers: [Peer] {
+        let pinned = fleetService.peers.filter { watchlist.contains($0.agentName) }
+        let attention = fleetService.peersNeedingAttention(watchlist: watchlist)
+        var seen = Set<String>()
+        var result: [Peer] = []
+        for peer in pinned + attention {
+            if seen.insert(peer.agentName).inserted {
+                result.append(peer)
+            }
+            if result.count >= 10 { break }
+        }
+        return result
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Fleet Status")
                 .font(.headline)
 
+            if fleetService.exceptionCount > 0 {
+                Text("\(fleetService.exceptionCount) need attention")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
             Divider()
 
-            ForEach(fleetService.peers.prefix(10)) { peer in
+            ForEach(menuBarPeers) { peer in
                 HStack(spacing: 6) {
                     Circle()
                         .fill(dotColor(peer))
@@ -28,7 +53,7 @@ struct MenuBarView: View {
                 }
             }
 
-            if fleetService.peers.isEmpty {
+            if menuBarPeers.isEmpty {
                 Text("No agents online")
                     .font(.caption)
                     .foregroundStyle(.secondary)
