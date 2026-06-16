@@ -71,9 +71,9 @@ struct ChannelThreadView: View {
     @EnvironmentObject var fleetService: FleetService
     @EnvironmentObject var dmService: DMService
     @State private var newMessage = ""
-    @State private var replyTo: CoordMessage?
+    @State private var replyContext: ReplyContext?
     @State private var isLoadingHistory = false
-    @State private var dmPeer: Peer?
+    @State private var dmPresentation: DMPresentation?
 
     private var messages: [CoordMessage] {
         channelService.activeMessages
@@ -120,8 +120,8 @@ struct ChannelThreadView: View {
                         MessageBubble(
                             message: msg,
                             parentMessage: parentMessage(for: msg),
-                            onReply: { replyTo = msg },
-                            onDM: { openDM(agentName: $0) },
+                            onReply: { beginReply(to: msg) },
+                            onDM: { agent, quoted in openDM(agentName: agent, quoting: quoted) },
                             onMention: { insertMention(agentName: $0) }
                         )
                     }
@@ -131,31 +131,10 @@ struct ChannelThreadView: View {
             Divider()
 
             VStack(spacing: 0) {
-                if let reply = replyTo {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrowshape.turn.up.left.fill")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-
-                        Text("Replying to \(replyTargetMention(for: reply))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-
-                        Spacer()
-
-                        Button {
-                            replyTo = nil
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
+                if let reply = replyContext {
+                    ReplyComposerBanner(context: reply) {
+                        replyContext = nil
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.08))
-
                     Divider()
                 }
 
@@ -197,9 +176,9 @@ struct ChannelThreadView: View {
         .onDisappear {
             channelService.setActiveChannel(nil)
         }
-        .sheet(item: $dmPeer) { peer in
+        .sheet(item: $dmPresentation) { presentation in
             NavigationStack {
-                DMView(peer: peer)
+                DMView(peer: presentation.peer, replyContext: presentation.replyContext)
             }
         }
         .task(id: channel.name) {
@@ -219,11 +198,8 @@ struct ChannelThreadView: View {
         return messages.first { $0.id == replyToId }
     }
 
-    private func replyTargetMention(for message: CoordMessage) -> String {
-        if let name = message.fromAgentName {
-            return "@\(name)"
-        }
-        return "@\(PeerNameResolver.shared.resolve(message.from))"
+    private func beginReply(to message: CoordMessage) {
+        replyContext = ReplyContext.from(message: message, channel: channel.name)
     }
 
     private var mentionCandidates: [String] {
@@ -241,8 +217,11 @@ struct ChannelThreadView: View {
         isLoadingHistory = false
     }
 
-    private func openDM(agentName: String) {
-        dmPeer = peer(for: agentName)
+    private func openDM(agentName: String, quoting message: CoordMessage) {
+        dmPresentation = DMPresentation(
+            peer: peer(for: agentName),
+            replyContext: ReplyContext.from(message: message, channel: channel.name)
+        )
     }
 
     private func insertMention(agentName: String) {
@@ -264,20 +243,26 @@ struct ChannelThreadView: View {
     private func sendMessage() {
         let text = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let replyId = replyTo?.id
+        let replyId = replyContext?.messageId
         newMessage = ""
-        replyTo = nil
+        replyContext = nil
         Task {
             await channelService.send(channel: channel.name, content: text, replyTo: replyId)
         }
     }
 }
 
+private struct DMPresentation: Identifiable {
+    let peer: Peer
+    let replyContext: ReplyContext?
+    var id: String { peer.agentName }
+}
+
 struct MessageBubble: View {
     let message: CoordMessage
     var parentMessage: CoordMessage?
     var onReply: (() -> Void)?
-    var onDM: ((String) -> Void)?
+    var onDM: ((String, CoordMessage) -> Void)?
     var onMention: ((String) -> Void)?
     @ObservedObject var nameResolver = PeerNameResolver.shared
 
@@ -316,7 +301,7 @@ struct MessageBubble: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if let agent = senderAgentName {
                 Button {
-                    onDM?(agent)
+                    onDM?(agent, message)
                 } label: {
                     Label("DM", systemImage: "envelope.fill")
                 }
@@ -343,7 +328,7 @@ struct MessageBubble: View {
     private var messageActions: some View {
         if let agent = senderAgentName {
             Button {
-                onDM?(agent)
+                onDM?(agent, message)
             } label: {
                 Label(
                     "DM \(AgentMentionAutocomplete.displayLabel(for: agent))",

@@ -3,11 +3,14 @@ import SwiftUI
 /// DM view for bilateral agent communication
 struct DMView: View {
     let peer: Peer
+    var replyContext: ReplyContext?
     @EnvironmentObject var dmService: DMService
     @EnvironmentObject var fleetService: FleetService
     @State private var newMessage = ""
     @State private var isLoading = false
     @State private var sendError: String?
+    @State private var didApplyReplyPrefix = false
+    @State private var activeReplyContext: ReplyContext?
 
     private var client: ForgeGraphClient {
         AppConfig.shared.makeClient()
@@ -63,7 +66,13 @@ struct DMView: View {
                 }
             }
 
-            Divider()
+            if let activeReplyContext {
+                ReplyComposerBanner(context: activeReplyContext) {
+                    stripReplyPrefix()
+                    self.activeReplyContext = nil
+                }
+                Divider()
+            }
 
             GrowingMessageComposer(
                 text: $newMessage,
@@ -79,6 +88,8 @@ struct DMView: View {
         #endif
         .onAppear {
             dmService.setActivePeer(peer.agentName)
+            activeReplyContext = replyContext
+            applyReplyPrefixIfNeeded()
         }
         .onDisappear {
             dmService.setActivePeer(nil)
@@ -108,6 +119,18 @@ struct DMView: View {
         isLoading = true
         await dmService.pollInbox()
         isLoading = false
+    }
+
+    private func applyReplyPrefixIfNeeded() {
+        guard !didApplyReplyPrefix, let activeReplyContext, newMessage.isEmpty else { return }
+        newMessage = activeReplyContext.dmQuotePrefix
+        didApplyReplyPrefix = true
+    }
+
+    private func stripReplyPrefix() {
+        guard let activeReplyContext, newMessage.hasPrefix(activeReplyContext.dmQuotePrefix) else { return }
+        newMessage = ""
+        didApplyReplyPrefix = false
     }
 
     private func submitMessage() {
