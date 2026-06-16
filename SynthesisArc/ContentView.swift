@@ -37,6 +37,11 @@ struct ContentView: View {
                     Label("Channels", systemImage: "bubble.left.and.bubble.right.fill")
                 }
 
+            DirectorConsoleView()
+                .tabItem {
+                    Label("Director", systemImage: "bolt.fill")
+                }
+
             BlackboardView()
                 .tabItem {
                     Label("Blackboard", systemImage: "list.clipboard.fill")

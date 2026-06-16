@@ -25,6 +25,9 @@ class AppConfig: ObservableObject {
     /// Optional path to a synced roster JSON (macOS dev). Empty → bundled fleet-roster.json.
     @AppStorage("fleet.rosterPath") var fleetRosterPath = ""
 
+    /// Optional ops-graph stats JSON URL (e.g. file:// or http://). Empty → posture card hidden.
+    @AppStorage("opsGraph.statsURL") var opsGraphStatsURL = ""
+
     @AppStorage("notifications.enabled") var notificationsEnabled = true
     @AppStorage("notifications.critical") var notificationsCritical = true
     @AppStorage("notifications.messages") var notificationsMessages = true
@@ -149,9 +152,21 @@ struct SettingsView: View {
                 #endif
             }
 
+            Section("Advanced") {
+                TextField("Ops Graph stats URL", text: $config.opsGraphStatsURL)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .autocorrectionDisabled()
+
+                Text("JSON with repos, violations, deadCode — e.g. file:///path/stats.json or http://host/stats")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("About") {
                 LabeledContent("App", value: "Synthesis Arc Fleet")
-                LabeledContent("Phase", value: "1 — Fleet + Channels")
+                LabeledContent("Phase", value: "L4 — Director Console")
                 LabeledContent("Backend", value: "forge-graphd :9090")
                 LabeledContent("Transport", value: "Tailscale → /api/v1")
             }
