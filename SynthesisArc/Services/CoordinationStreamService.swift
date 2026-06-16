@@ -16,8 +16,6 @@ final class CoordinationStreamService: ObservableObject {
 
     private var streamTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
-    private let bootChannels = ["engineering", "ops"]
-
     func start() {
         stop()
         streamTask = Task { [weak self] in
@@ -83,9 +81,8 @@ final class CoordinationStreamService: ObservableObject {
         components.host = config.graphdHost
         components.port = config.graphdPort
         components.path = "/api/v1/events/coordination"
-        components.queryItems = [
-            URLQueryItem(name: "channels", value: bootChannels.joined(separator: ","))
-        ]
+        // Omit `channels` filter — receive all channel_message events for channels
+        // the booted session is a member of (not only engineering/ops).
 
         guard let url = components.url else {
             throw ForgeGraphError.invalidURL("/api/v1/events/coordination")

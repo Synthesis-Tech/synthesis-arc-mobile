@@ -24,6 +24,7 @@ struct SynthesisArcApp: App {
                     streamService.channelService = channelService
                     streamService.dmService = dmService
                     fleetService.attachDMService(dmService)
+                    fleetService.attachChannelService(channelService)
                     await fleetService.bootAsPeer()
                     await pushService.requestPermissionIfNeeded()
                     await nameResolver.refresh()

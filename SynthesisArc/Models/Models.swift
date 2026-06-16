@@ -125,13 +125,14 @@ struct CoordMessage: Codable, Identifiable {
     /// Whether this message was sent by `peerAgentName` in a bilateral thread.
     func isFromPeer(peerAgentName: String, localAgent: String) -> Bool {
         if let from = fromAgentName {
+            if from == localAgent { return false }
             return from == peerAgentName
         }
         if let to = toAgentName {
-            return to == peerAgentName && fromAgentName != localAgent
+            return to == peerAgentName
         }
-        // REST-polled inbound DMs delivered to local agent
-        return true
+        // REST-polled inbound DMs: sender session id in `from`, no agent name yet.
+        return from != nil
     }
 
     func isFromLocalAgent(_ localAgent: String) -> Bool {

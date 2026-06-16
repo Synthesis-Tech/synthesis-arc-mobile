@@ -5,6 +5,11 @@ import Foundation
 final class DMService: ObservableObject {
     @Published private(set) var inboundMessages: [CoordMessage] = []
     @Published private(set) var outboundMessages: [CoordMessage] = []
+    /// Bilateral thread currently on screen — flat array for reliable SwiftUI refresh.
+    @Published private(set) var activeThreadMessages: [CoordMessage] = []
+
+    private var activePeerAgentName: String?
+    private var pollTask: Task<Void, Never>?
 
     private var localAgentName: String {
         AppConfig.shared.agentName
@@ -20,6 +25,7 @@ final class DMService: ObservableObject {
         updated.append(message)
         updated.sort { $0.sentAtUnixMs > $1.sentAtUnixMs }
         inboundMessages = updated
+        refreshActiveThread()
         return true
     }
 
@@ -29,6 +35,47 @@ final class DMService: ObservableObject {
             ingestInbound(message)
         }
         reconcileOutbound(with: messages)
+        refreshActiveThread()
+    }
+
+    func setActivePeer(_ peerAgentName: String?) {
+        if activePeerAgentName != peerAgentName {
+            stopPolling()
+        }
+        activePeerAgentName = peerAgentName
+        refreshActiveThread()
+        if peerAgentName != nil {
+            startPolling(interval: 10)
+        }
+    }
+
+    func stopPolling() {
+        pollTask?.cancel()
+        pollTask = nil
+    }
+
+    /// REST poll fallback for agent responses when SSE is slow or disconnected.
+    func startPolling(interval: TimeInterval = 10) {
+        pollTask?.cancel()
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled, let self else { break }
+                await self.pollInbox()
+            }
+        }
+    }
+
+    func pollInbox() async {
+        let client = AppConfig.shared.makeClient()
+        guard !AppConfig.shared.apiKey.isEmpty else { return }
+        do {
+            let polled = try await client.pollMessages()
+            let resolver = PeerNameResolver.shared
+            seedInbound(polled.map { resolver.enrich($0) })
+        } catch {
+            print("[DMService] pollInbox failed: \(error)")
+        }
     }
 
     /// Append optimistic outbound DM to the bilateral thread cache.
@@ -39,6 +86,7 @@ final class DMService: ObservableObject {
         updated.append(message)
         updated.sort { $0.sentAtUnixMs < $1.sentAtUnixMs }
         outboundMessages = updated
+        refreshActiveThread()
     }
 
     // MARK: - Queries
@@ -119,6 +167,15 @@ final class DMService: ObservableObject {
             }
         }
         outboundMessages = updated
+        refreshActiveThread()
+    }
+
+    private func refreshActiveThread() {
+        guard let peer = activePeerAgentName else {
+            activeThreadMessages = []
+            return
+        }
+        activeThreadMessages = messages(with: peer)
     }
 }
 

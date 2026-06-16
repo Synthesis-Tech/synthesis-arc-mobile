@@ -10,6 +10,7 @@ class FleetService: ObservableObject {
     @Published var error: String?
     @Published var graphdHealthy = false
     @Published var streamConnected = false
+    @Published private(set) var isBooted = false
     @Published var myPeerId: String?
     @Published var mySessionId: String?
     @Published private(set) var roster: FleetRoster = .empty
@@ -18,6 +19,7 @@ class FleetService: ObservableObject {
     private var client: ForgeGraphClient
     private var refreshTimer: Timer?
     private weak var dmService: DMService?
+    private weak var channelService: ChannelService?
     private var dmCancellable: AnyCancellable?
 
     private let pollIntervalLive: TimeInterval = 120
@@ -45,6 +47,10 @@ class FleetService: ObservableObject {
                 self?.refreshExceptionCount()
             }
         refreshExceptionCount()
+    }
+
+    func attachChannelService(_ channelService: ChannelService) {
+        self.channelService = channelService
     }
 
     /// Peers ranked by SignalRanker (score >= 50).
@@ -146,6 +152,7 @@ class FleetService: ObservableObject {
 
         guard !config.apiKey.isEmpty else {
             error = "API key required — open Settings"
+            isBooted = false
             return
         }
 
@@ -158,6 +165,7 @@ class FleetService: ObservableObject {
             mySessionId = String(response.sessionId)
             graphdHealthy = true
             error = nil
+            isBooted = true
 
             print("[FleetService] BOOT OK — peer: \(response.peerId), session: \(response.sessionId), pending DMs: \(response.pendingMessages.count)")
 
@@ -172,10 +180,12 @@ class FleetService: ObservableObject {
                 dmService?.seedInbound(enriched)
             }
 
+            await channelService?.preloadChannels(["engineering", "ops"])
             await refresh()
         } catch {
             print("[FleetService] BOOT FAILED: \(error)")
             self.error = "Boot failed: \(error.localizedDescription)"
+            isBooted = false
         }
     }
 

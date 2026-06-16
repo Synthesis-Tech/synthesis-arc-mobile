@@ -68,16 +68,18 @@ struct ChannelRow: View {
 struct ChannelThreadView: View {
     let channel: Channel
     @EnvironmentObject var channelService: ChannelService
+    @EnvironmentObject var fleetService: FleetService
     @State private var newMessage = ""
     @State private var replyTo: CoordMessage?
+    @State private var isLoadingHistory = false
 
     private var messages: [CoordMessage] {
-        channelService.messages[channel.name] ?? []
+        channelService.activeMessages
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if let err = channelService.error {
+            if let err = channelService.threadError {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(err)
@@ -97,6 +99,17 @@ struct ChannelThreadView: View {
             }
 
             ScrollView {
+                if isLoadingHistory && messages.isEmpty {
+                    ProgressView("Loading history...")
+                        .padding(.top, 40)
+                } else if messages.isEmpty {
+                    ContentUnavailableView(
+                        "No Messages Yet",
+                        systemImage: "bubble.left",
+                        description: Text("Past messages load from forge-graphd when you open a channel.")
+                    )
+                    .padding(.top, 24)
+                } else {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     ForEach(messages, id: \.id) { msg in
                         MessageBubble(
@@ -123,6 +136,7 @@ struct ChannelThreadView: View {
                     }
                 }
                 .padding()
+                }
             }
 
             Divider()
@@ -178,8 +192,21 @@ struct ChannelThreadView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .task {
+        .onAppear {
+            channelService.setActiveChannel(channel.name)
+        }
+        .onDisappear {
+            channelService.setActiveChannel(nil)
+        }
+        .task(id: channel.name) {
+            isLoadingHistory = true
+            if !fleetService.isBooted {
+                for _ in 0..<30 where !fleetService.isBooted {
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                }
+            }
             await channelService.loadHistory(channel: channel.name)
+            isLoadingHistory = false
         }
     }
 

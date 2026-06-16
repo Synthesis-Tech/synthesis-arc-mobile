@@ -13,7 +13,7 @@ struct DMView: View {
     }
 
     private var messages: [CoordMessage] {
-        dmService.messages(with: peer.agentName)
+        dmService.activeThreadMessages
     }
 
     private var localAgentName: String {
@@ -93,7 +93,13 @@ struct DMView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .task {
+        .onAppear {
+            dmService.setActivePeer(peer.agentName)
+        }
+        .onDisappear {
+            dmService.setActivePeer(nil)
+        }
+        .task(id: peer.agentName) {
             await loadMessages()
         }
     }
@@ -106,15 +112,7 @@ struct DMView: View {
 
     private func loadMessages() async {
         isLoading = true
-        do {
-            let polled = try await client.pollMessages()
-            let resolver = PeerNameResolver.shared
-            let enriched = polled.map { resolver.enrich($0) }
-            dmService.seedInbound(enriched)
-        } catch {
-            print("[DMView] loadMessages error: \(error)")
-            sendError = "Load failed: \(error.localizedDescription)"
-        }
+        await dmService.pollInbox()
         isLoading = false
     }
 
@@ -124,6 +122,11 @@ struct DMView: View {
         dmService.appendOutbound(optimistic)
         do {
             try await client.sendDM(to: peer.agentName, content: content)
+            // Agents reply asynchronously — poll a few times for the response.
+            for delay in [2.0, 5.0, 10.0] {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                await dmService.pollInbox()
+            }
         } catch {
             sendError = "Send failed: \(error.localizedDescription)"
         }

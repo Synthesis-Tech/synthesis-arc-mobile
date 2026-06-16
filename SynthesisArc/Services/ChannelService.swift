@@ -6,13 +6,17 @@ import Combine
 class ChannelService: ObservableObject {
     @Published var channels: [Channel] = []
     @Published var messages: [String: [CoordMessage]] = [:]
+    /// Messages for the channel thread currently on screen — flat array so SwiftUI reliably refreshes.
+    @Published private(set) var activeMessages: [CoordMessage] = []
     @Published var channelUnread: [String: Int] = [:]
     @Published var channelPreviews: [String: ChannelPreview] = [:]
     @Published var isLoading = false
     @Published var error: String?
+    @Published var threadError: String?
 
     private var client: ForgeGraphClient
     private var activeChannelName: String?
+    private var historyRefreshTask: Task<Void, Never>?
 
     var totalChannelUnread: Int {
         channelUnread.values.reduce(0, +)
@@ -46,11 +50,44 @@ class ChannelService: ObservableObject {
             if let last = history.max(by: { $0.sentAtUnixMs < $1.sentAtUnixMs }) {
                 updatePreview(channel: channel, message: last)
             }
+            if activeChannelName == channel {
+                threadError = nil
+            }
             error = nil
+            print("[ChannelService] loadHistory(\(channel)) OK — \(history.count) messages")
         } catch {
-            self.error = error.localizedDescription
+            let message = error.localizedDescription
+            if activeChannelName == channel {
+                threadError = message
+            }
+            self.error = message
             print("[ChannelService] loadHistory(\(channel)) failed: \(error)")
         }
+    }
+
+    /// Warm history cache for channels joined at boot.
+    func preloadChannels(_ names: [String]) async {
+        for name in names {
+            await loadHistory(channel: name)
+        }
+    }
+
+    /// Poll history while a channel thread is visible (REST fallback when SSE lags).
+    func startActiveChannelRefresh(interval: TimeInterval = 15) {
+        historyRefreshTask?.cancel()
+        guard let channel = activeChannelName else { return }
+        historyRefreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled, let self else { break }
+                await self.loadHistory(channel: channel)
+            }
+        }
+    }
+
+    func stopActiveChannelRefresh() {
+        historyRefreshTask?.cancel()
+        historyRefreshTask = nil
     }
 
     func send(channel: String, content: String, replyTo: NodeId? = nil) async {
@@ -85,9 +122,18 @@ class ChannelService: ObservableObject {
     }
 
     func setActiveChannel(_ channel: String?) {
+        if activeChannelName != channel {
+            stopActiveChannelRefresh()
+        }
         activeChannelName = channel
         if let channel {
+            activeMessages = messages[channel] ?? []
+            threadError = nil
             markChannelRead(channel)
+            startActiveChannelRefresh()
+        } else {
+            activeMessages = []
+            threadError = nil
         }
     }
 
@@ -111,5 +157,8 @@ class ChannelService: ObservableObject {
         var updated = messages
         updated[channel] = channelMessages
         messages = updated
+        if activeChannelName == channel {
+            activeMessages = channelMessages
+        }
     }
 }
