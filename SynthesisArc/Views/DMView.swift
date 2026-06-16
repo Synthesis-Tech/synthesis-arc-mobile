@@ -4,6 +4,7 @@ import SwiftUI
 struct DMView: View {
     let peer: Peer
     @EnvironmentObject var dmService: DMService
+    @EnvironmentObject var fleetService: FleetService
     @State private var newMessage = ""
     @State private var isLoading = false
     @State private var sendError: String?
@@ -67,6 +68,7 @@ struct DMView: View {
             GrowingMessageComposer(
                 text: $newMessage,
                 placeholder: "Message \(displayName)...",
+                mentionCandidates: mentionCandidates,
                 onSend: submitMessage
             )
             .padding()
@@ -84,6 +86,16 @@ struct DMView: View {
         .task(id: peer.agentName) {
             await loadMessages()
         }
+    }
+
+    private var mentionCandidates: [String] {
+        var names = Set(fleetService.roster.allMemberNames)
+        for listed in fleetService.peers {
+            names.insert(listed.agentName)
+        }
+        names.remove(AppConfig.shared.agentName)
+        names.remove(peer.agentName)
+        return names.sorted()
     }
 
     private var displayName: String {

@@ -46,6 +46,17 @@ struct FleetRoster: Codable, Equatable {
         }
         return Self.otherDepartmentKey
     }
+
+    /// All agent names listed in the roster (all departments).
+    var allMemberNames: [String] {
+        var names = Set<String>()
+        for dept in departments.values {
+            for member in dept.members {
+                names.insert(member)
+            }
+        }
+        return names.sorted()
+    }
 }
 
 // MARK: - Loader
