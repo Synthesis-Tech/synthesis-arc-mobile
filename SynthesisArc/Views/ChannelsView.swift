@@ -98,20 +98,23 @@ struct ChannelThreadView: View {
                 .foregroundStyle(.orange)
             }
 
-            ScrollView {
+            Group {
                 if isLoadingHistory && messages.isEmpty {
-                    ProgressView("Loading history...")
-                        .padding(.top, 40)
+                    ScrollView {
+                        ProgressView("Loading history...")
+                            .padding(.top, 40)
+                    }
                 } else if messages.isEmpty {
-                    ContentUnavailableView(
-                        "No Messages Yet",
-                        systemImage: "bubble.left",
-                        description: Text("Past messages load from forge-graphd when you open a channel.")
-                    )
-                    .padding(.top, 24)
+                    ScrollView {
+                        ContentUnavailableView(
+                            "No Messages Yet",
+                            systemImage: "bubble.left",
+                            description: Text("Past messages load from forge-graphd when you open a channel.")
+                        )
+                        .padding(.top, 24)
+                    }
                 } else {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(messages, id: \.id) { msg in
+                    MessageThreadScrollView(messages: messages) { msg in
                         MessageBubble(
                             message: msg,
                             parentMessage: parentMessage(for: msg)
@@ -134,8 +137,6 @@ struct ChannelThreadView: View {
                         }
                         #endif
                     }
-                }
-                .padding()
                 }
             }
 
@@ -170,21 +171,11 @@ struct ChannelThreadView: View {
                     Divider()
                 }
 
-                HStack(spacing: 8) {
-                    TextField("Message #\(channel.name)", text: $newMessage)
-                        .textFieldStyle(.roundedBorder)
-                        #if os(iOS)
-                        .textInputAutocapitalization(.sentences)
-                        #endif
-
-                    Button {
-                        sendMessage()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.title2)
-                    }
-                    .disabled(newMessage.isEmpty)
-                }
+                GrowingMessageComposer(
+                    text: $newMessage,
+                    placeholder: "Message #\(channel.name)",
+                    onSend: sendMessage
+                )
                 .padding()
             }
         }
@@ -248,8 +239,8 @@ struct ChannelThreadView: View {
     }
 
     private func sendMessage() {
-        guard !newMessage.isEmpty else { return }
-        let text = newMessage
+        let text = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
         let replyId = replyTo?.id
         newMessage = ""
         replyTo = nil

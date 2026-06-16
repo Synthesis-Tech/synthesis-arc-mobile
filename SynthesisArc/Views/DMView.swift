@@ -37,56 +37,38 @@ struct DMView: View {
                 .foregroundStyle(.red)
             }
 
-            ScrollView {
+            Group {
                 if isLoading && messages.isEmpty {
-                    ProgressView("Loading messages...")
-                        .padding(.top, 40)
-                } else if messages.isEmpty {
-                    ContentUnavailableView(
-                        "No Messages",
-                        systemImage: "envelope",
-                        description: Text("Start a conversation with \(displayName)")
-                    )
-                } else {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(messages, id: \.id) { msg in
-                            DMBubble(
-                                message: msg,
-                                peerName: peer.agentName,
-                                localAgentName: localAgentName
-                            )
-                        }
+                    ScrollView {
+                        ProgressView("Loading messages...")
+                            .padding(.top, 40)
                     }
-                    .padding()
+                } else if messages.isEmpty {
+                    ScrollView {
+                        ContentUnavailableView(
+                            "No Messages",
+                            systemImage: "envelope",
+                            description: Text("Start a conversation with \(displayName)")
+                        )
+                    }
+                } else {
+                    MessageThreadScrollView(messages: messages) { msg in
+                        DMBubble(
+                            message: msg,
+                            peerName: peer.agentName,
+                            localAgentName: localAgentName
+                        )
+                    }
                 }
             }
 
             Divider()
 
-            HStack(spacing: 8) {
-                TextField("Message \(displayName)...", text: $newMessage)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                    .textInputAutocapitalization(.sentences)
-                    #endif
-                    .onSubmit {
-                        guard !newMessage.isEmpty else { return }
-                        let text = newMessage
-                        newMessage = ""
-                        Task { await sendDM(text) }
-                    }
-
-                Button {
-                    guard !newMessage.isEmpty else { return }
-                    let text = newMessage
-                    newMessage = ""
-                    Task { await sendDM(text) }
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                }
-                .disabled(newMessage.isEmpty)
-            }
+            GrowingMessageComposer(
+                text: $newMessage,
+                placeholder: "Message \(displayName)...",
+                onSend: submitMessage
+            )
             .padding()
         }
         .navigationTitle("DM: \(displayName)")
@@ -114,6 +96,13 @@ struct DMView: View {
         isLoading = true
         await dmService.pollInbox()
         isLoading = false
+    }
+
+    private func submitMessage() {
+        let text = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        newMessage = ""
+        Task { await sendDM(text) }
     }
 
     private func sendDM(_ content: String) async {
