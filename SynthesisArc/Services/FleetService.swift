@@ -164,6 +164,14 @@ class FleetService: ObservableObject {
             blackboard = response.blackboardSnapshot.sorted {
                 $0.updatedAtUnixMs > $1.updatedAtUnixMs
             }
+            PeerNameResolver.shared.indexBlackboard(blackboard)
+
+            if !response.pendingMessages.isEmpty {
+                let resolver = PeerNameResolver.shared
+                let enriched = response.pendingMessages.map { resolver.enrich($0) }
+                dmService?.seedInbound(enriched)
+            }
+
             await refresh()
         } catch {
             print("[FleetService] BOOT FAILED: \(error)")
@@ -215,6 +223,7 @@ class FleetService: ObservableObject {
 
             self.peers = fetchedPeers.fleetSorted()
             self.blackboard = fetchedBoard.sorted { $0.updatedAtUnixMs > $1.updatedAtUnixMs }
+            PeerNameResolver.shared.indexBlackboard(self.blackboard)
             self.error = nil
             refreshExceptionCount()
         } catch {

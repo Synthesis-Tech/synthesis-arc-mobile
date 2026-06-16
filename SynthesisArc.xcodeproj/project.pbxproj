@@ -7,92 +7,92 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03DD5F480E5DC3D9122828B8 /* DirectorConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F413DE96302FACBACF956C8 /* DirectorConsoleView.swift */; };
 		1392422CAF708D7880E8EE34 /* CoordinationStreamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD09A2654B4B82E34F12962 /* CoordinationStreamService.swift */; };
+		13EC97B73A63EDF3EB2DE4C5 /* QuickActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2848C1BECEE742E8208D46A2 /* QuickActionsSheet.swift */; };
 		1450B390D0EC93C9B73F0C86 /* ForgeGraphClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FACF75E06D94201203CA8B0 /* ForgeGraphClient.swift */; };
 		14985EEF0BAA2197BBF97ED9 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251189BEAEE89C3B04ABA29F /* AppConfig.swift */; };
+		17E08E72B453A2723064A306 /* DMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A25052035D0A56C505F5C5F /* DMService.swift */; };
+		2021C1786F76486EC8D5392D /* FleetRoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A5FDF42B05D7E266360030 /* FleetRoster.swift */; };
 		23A12CB0E41F8B43780DF3CA /* PeerNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */; };
+		2560144A1E8FB0BE1302E0B1 /* fleet-roster.json in Resources */ = {isa = PBXBuildFile; fileRef = 7A737C64EF7FC1E8E99DF697 /* fleet-roster.json */; };
 		27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */; };
+		2E52F4452748704174CDDCAB /* BroadcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D12F922EA2A7D0B34489BDE /* BroadcastService.swift */; };
 		3036CFDD8D350ACCB6FB3F44 /* FleetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED953092A7C1AA11748D1ACC /* FleetService.swift */; };
 		4B2B61D7DD8FE3E03D017733 /* PeerNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */; };
+		569CB28005B21298ADCDCD83 /* OpsGraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F832E8D1ECA4AD6B00396A17 /* OpsGraphService.swift */; };
 		585FF1D49429132C495CEE77 /* ForgeGraphClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FACF75E06D94201203CA8B0 /* ForgeGraphClient.swift */; };
+		5A62C0CDB14D6DD35B21E02A /* fleet-roster.json in Resources */ = {isa = PBXBuildFile; fileRef = 7A737C64EF7FC1E8E99DF697 /* fleet-roster.json */; };
 		5AB8773D7D67CC1AECFB297B /* CoordinationStreamService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD09A2654B4B82E34F12962 /* CoordinationStreamService.swift */; };
 		6059559C878436A2657BB967 /* DMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE1F8F1517295169CB2D7C6 /* DMView.swift */; };
+		65E5700472607671D90CFB50 /* SignalRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7B0BA4EEBAE2506C62F504 /* SignalRanker.swift */; };
+		6C9615B323A6E194E6610BA1 /* QuickActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2848C1BECEE742E8208D46A2 /* QuickActionsSheet.swift */; };
 		6E2F167E767AD9CECBE1D6EF /* ChannelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166D4F82477909F6F243D29 /* ChannelsView.swift */; };
+		6EBCFE31C16EA44388531EB5 /* OpsGraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F832E8D1ECA4AD6B00396A17 /* OpsGraphService.swift */; };
+		78A768D396FDF650517D26C2 /* DirectorConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F413DE96302FACBACF956C8 /* DirectorConsoleView.swift */; };
 		896582FD393CC095FB2679B3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B1646DAC21E466B81DCF4 /* ContentView.swift */; };
 		9177F817C920DB35E60568E0 /* SynthesisArcApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */; };
+		989114A5F24F5C73477232B7 /* MentionText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446114CDE9CAF35F20BE3FDB /* MentionText.swift */; };
 		9BC13EAB07BD1A32B9D1E6EF /* FleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */; };
+		A003A69E423C8A69ECF0C02A /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F3AA4E4C70B8AB27EF90DF /* PushNotificationService.swift */; };
 		A2AB0CC32562D533663F936A /* BlackboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */; };
 		A69FDACE7E5AEC5203DFFBCF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B1646DAC21E466B81DCF4 /* ContentView.swift */; };
 		AF4AB87A8111C356172E7DD2 /* ChannelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F166D4F82477909F6F243D29 /* ChannelsView.swift */; };
 		B464A4B05242CD2EBA9A2EE4 /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9698B30298770DAF3F3F320D /* AgentDetailView.swift */; };
 		B6232A732059650BB46DA54E /* ChannelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5DEF84096042D1D77327EB /* ChannelService.swift */; };
-		E8F9A0B1C2D3E4F5A6B7C8D9 /* DMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E8F9A0B1C2D3E4F5A6B7C8 /* DMService.swift */; };
 		BB2BD09380E3CF62078BC80A /* FleetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED953092A7C1AA11748D1ACC /* FleetService.swift */; };
 		BD53BBD622BF80556F6C0EE9 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE25B1C5D9879FCE14391A5D /* InboxView.swift */; };
+		BE6B2680540EE467799E80B0 /* SignalRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7B0BA4EEBAE2506C62F504 /* SignalRanker.swift */; };
 		BEB9DD6C30F05AD632876345 /* BlackboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */; };
+		C286108731FCFA0F265A19E6 /* MentionText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446114CDE9CAF35F20BE3FDB /* MentionText.swift */; };
 		C2F63FE71EA8D07CA66D3FC5 /* SynthesisArcApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */; };
 		C35020CA069877E8514683EC /* AgentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9698B30298770DAF3F3F320D /* AgentDetailView.swift */; };
 		C6C47F3FABBCE8863730DE38 /* ConnectionStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */; };
 		C90C48163A7D96679CEB15A5 /* ChannelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A5DEF84096042D1D77327EB /* ChannelService.swift */; };
-		F9A0B1C2D3E4F5A6B7C8D9E0 /* DMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E8F9A0B1C2D3E4F5A6B7C8 /* DMService.swift */; };
 		C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
+		C9B61A1AA93A0D2DFEF494BA /* BroadcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D12F922EA2A7D0B34489BDE /* BroadcastService.swift */; };
 		CAD7A44CC846C8E74CC0C159 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE25B1C5D9879FCE14391A5D /* InboxView.swift */; };
 		CD1AB52E212F66F772498969 /* DMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE1F8F1517295169CB2D7C6 /* DMView.swift */; };
 		D39F14C151666093F43A0F68 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20E1BB917913570B5C15453A /* Models.swift */; };
+		D3A32421E9D0DE34D60F33BA /* DMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A25052035D0A56C505F5C5F /* DMService.swift */; };
 		D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */; };
 		E059DAD4B68014096DC14084 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251189BEAEE89C3B04ABA29F /* AppConfig.swift */; };
+		E212D58D6668A49FB08DCBB0 /* FleetRoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A5FDF42B05D7E266360030 /* FleetRoster.swift */; };
 		E651EB022DAAF8D199FF4102 /* ConnectionStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */; };
 		EA7279C643A89BCAEEF988B0 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */; };
-		F1A2B3C4D5E6F708192A3B4C /* MentionText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* MentionText.swift */; };
-		F2A3B4C5D6E7F8091A2B3C4D /* MentionText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* MentionText.swift */; };
-		A3B4C5D6E7F8091A2B3C4D5E /* FleetRoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E6F /* FleetRoster.swift */; };
-		B5C6D7E8F9012A3B4C5D6E7F /* FleetRoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E6F /* FleetRoster.swift */; };
-		C6D7E8F9012A3B4C5D6E7F80 /* fleet-roster.json in Resources */ = {isa = PBXBuildFile; fileRef = D7E8F9012A3B4C5D6E7F8091 /* fleet-roster.json */; };
-		E8F9012A3B4C5D6E7F8091A2 /* fleet-roster.json in Resources */ = {isa = PBXBuildFile; fileRef = D7E8F9012A3B4C5D6E7F8091 /* fleet-roster.json */; };
-		F3A4B5C6D7E8F9012A3B4C5D /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift */; };
-		G4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift */; };
-		H5C6D7E8F9012A3B4C5D6E7F /* QuickActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift */; };
-		I6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift */; };
-		D8E9F012A3B4C5D6E7F8091A /* SignalRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D8E9F012A3B4C5D6E7F809 /* SignalRanker.swift */; };
-		E9F012A3B4C5D6E7F8091A2B /* SignalRanker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D8E9F012A3B4C5D6E7F809 /* SignalRanker.swift */; };
-		J7E8F9012A3B4C5D6E7F8092A /* BroadcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = J7E8F9012A3B4C5D6E7F8092 /* BroadcastService.swift */; };
-		K8F9012A3B4C5D6E7F8091A3B /* BroadcastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = J7E8F9012A3B4C5D6E7F8092 /* BroadcastService.swift */; };
-		L9F012A3B4C5D6E7F8091A2B4 /* OpsGraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = L9F012A3B4C5D6E7F8091A2 /* OpsGraphService.swift */; };
-		M0F123A4B5C6D7E8F9012A3B5C /* OpsGraphService.swift in Sources */ = {isa = PBXBuildFile; fileRef = L9F012A3B4C5D6E7F8091A2 /* OpsGraphService.swift */; };
-		N1F234B5C6D7E8F9012A3B4C6D /* DirectorConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1F234B5C6D7E8F9012A3B4 /* DirectorConsoleView.swift */; };
-		O2F345C6D7E8F9012A3B4C5D7E /* DirectorConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1F234B5C6D7E8F9012A3B4 /* DirectorConsoleView.swift */; };
+		FF2B67913C58487CAA999B06 /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F3AA4E4C70B8AB27EF90DF /* PushNotificationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		08F3AA4E4C70B8AB27EF90DF /* PushNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationService.swift; sourceTree = "<group>"; };
 		108B1646DAC21E466B81DCF4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		20E1BB917913570B5C15453A /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		21DC23421AF463529A5B3BA5 /* SynthesisArc.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		251189BEAEE89C3B04ABA29F /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		2848C1BECEE742E8208D46A2 /* QuickActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsSheet.swift; sourceTree = "<group>"; };
 		3FACF75E06D94201203CA8B0 /* ForgeGraphClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeGraphClient.swift; sourceTree = "<group>"; };
+		446114CDE9CAF35F20BE3FDB /* MentionText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionText.swift; sourceTree = "<group>"; };
+		4F413DE96302FACBACF956C8 /* DirectorConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorConsoleView.swift; sourceTree = "<group>"; };
+		5A25052035D0A56C505F5C5F /* DMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMService.swift; sourceTree = "<group>"; };
+		5A7B0BA4EEBAE2506C62F504 /* SignalRanker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalRanker.swift; sourceTree = "<group>"; };
 		6AD09A2654B4B82E34F12962 /* CoordinationStreamService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinationStreamService.swift; sourceTree = "<group>"; };
 		76DC47F8820FFAB8FF64EBB6 /* SynthesisArc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SynthesisArc.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A737C64EF7FC1E8E99DF697 /* fleet-roster.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "fleet-roster.json"; sourceTree = "<group>"; };
+		81A5FDF42B05D7E266360030 /* FleetRoster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRoster.swift; sourceTree = "<group>"; };
 		877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerNameResolver.swift; sourceTree = "<group>"; };
 		8A5DEF84096042D1D77327EB /* ChannelService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelService.swift; sourceTree = "<group>"; };
+		8D12F922EA2A7D0B34489BDE /* BroadcastService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BroadcastService.swift; sourceTree = "<group>"; };
 		9698B30298770DAF3F3F320D /* AgentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDetailView.swift; sourceTree = "<group>"; };
 		9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlackboardView.swift; sourceTree = "<group>"; };
 		AE25B1C5D9879FCE14391A5D /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
 		BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthesisArcApp.swift; sourceTree = "<group>"; };
 		DFE1F8F1517295169CB2D7C6 /* DMView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMView.swift; sourceTree = "<group>"; };
-		D7E8F9A0B1C2D3E4F5A6B7C8 /* DMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMService.swift; sourceTree = "<group>"; };
 		E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetView.swift; sourceTree = "<group>"; };
 		ED953092A7C1AA11748D1ACC /* FleetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetService.swift; sourceTree = "<group>"; };
 		F166D4F82477909F6F243D29 /* ChannelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsView.swift; sourceTree = "<group>"; };
 		F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStatusBar.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* MentionText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionText.swift; sourceTree = "<group>"; };
-		B4C5D6E7F8091A2B3C4D5E6F /* FleetRoster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetRoster.swift; sourceTree = "<group>"; };
-		D7E8F9012A3B4C5D6E7F8091 /* fleet-roster.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "fleet-roster.json"; sourceTree = "<group>"; };
-		A4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationService.swift; sourceTree = "<group>"; };
-		B5C6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsSheet.swift; sourceTree = "<group>"; };
-		C7D8E9F012A3B4C5D6E7F809 /* SignalRanker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalRanker.swift; sourceTree = "<group>"; };
-		J7E8F9012A3B4C5D6E7F8092 /* BroadcastService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BroadcastService.swift; sourceTree = "<group>"; };
-		L9F012A3B4C5D6E7F8091A2 /* OpsGraphService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpsGraphService.swift; sourceTree = "<group>"; };
-		N1F234B5C6D7E8F9012A3B4 /* DirectorConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorConsoleView.swift; sourceTree = "<group>"; };
+		F832E8D1ECA4AD6B00396A17 /* OpsGraphService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpsGraphService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -103,13 +103,13 @@
 				9AD97547C93AD1B340F97AC5 /* BlackboardView.swift */,
 				F166D4F82477909F6F243D29 /* ChannelsView.swift */,
 				F28B3E33B20EBDAB9118C4CA /* ConnectionStatusBar.swift */,
+				4F413DE96302FACBACF956C8 /* DirectorConsoleView.swift */,
 				DFE1F8F1517295169CB2D7C6 /* DMView.swift */,
 				E3F6F4130EE90F03D5CF9FF0 /* FleetView.swift */,
 				AE25B1C5D9879FCE14391A5D /* InboxView.swift */,
-				A1B2C3D4E5F60718293A4B5C /* MentionText.swift */,
-				B5C6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift */,
-				N1F234B5C6D7E8F9012A3B4 /* DirectorConsoleView.swift */,
+				446114CDE9CAF35F20BE3FDB /* MentionText.swift */,
 				1E69449F5B5AFC3F4DD9AC1D /* MenuBarView.swift */,
+				2848C1BECEE742E8208D46A2 /* QuickActionsSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -117,33 +117,25 @@
 		435134B516DAE32D1C7E9740 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				B4C5D6E7F8091A2B3C4D5E6F /* FleetRoster.swift */,
+				81A5FDF42B05D7E266360030 /* FleetRoster.swift */,
 				20E1BB917913570B5C15453A /* Models.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		F9012A3B4C5D6E7F8091A2B3 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				D7E8F9012A3B4C5D6E7F8091 /* fleet-roster.json */,
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 		7D51C7E1F808321747AD0B9C /* Services */ = {
 			isa = PBXGroup;
 			children = (
 				251189BEAEE89C3B04ABA29F /* AppConfig.swift */,
-				J7E8F9012A3B4C5D6E7F8092 /* BroadcastService.swift */,
+				8D12F922EA2A7D0B34489BDE /* BroadcastService.swift */,
 				8A5DEF84096042D1D77327EB /* ChannelService.swift */,
 				6AD09A2654B4B82E34F12962 /* CoordinationStreamService.swift */,
-				A4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift */,
-				D7E8F9A0B1C2D3E4F5A6B7C8 /* DMService.swift */,
+				5A25052035D0A56C505F5C5F /* DMService.swift */,
 				ED953092A7C1AA11748D1ACC /* FleetService.swift */,
-				L9F012A3B4C5D6E7F8091A2 /* OpsGraphService.swift */,
-				C7D8E9F012A3B4C5D6E7F809 /* SignalRanker.swift */,
+				F832E8D1ECA4AD6B00396A17 /* OpsGraphService.swift */,
 				877A9DE9A6D7DF22B872B6F4 /* PeerNameResolver.swift */,
+				08F3AA4E4C70B8AB27EF90DF /* PushNotificationService.swift */,
+				5A7B0BA4EEBAE2506C62F504 /* SignalRanker.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -171,7 +163,7 @@
 				BBB52CFAE5288C60FD9E4CC9 /* SynthesisArcApp.swift */,
 				435134B516DAE32D1C7E9740 /* Models */,
 				8474C6383E7BB51038E8F420 /* Networking */,
-				F9012A3B4C5D6E7F8091A2B3 /* Resources */,
+				F7CE6CC8803CB80C0C454212 /* Resources */,
 				7D51C7E1F808321747AD0B9C /* Services */,
 				0CC28F52322E628633C28021 /* Views */,
 			);
@@ -187,6 +179,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		F7CE6CC8803CB80C0C454212 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				7A737C64EF7FC1E8E99DF697 /* fleet-roster.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -195,7 +195,7 @@
 			buildConfigurationList = A2DD006475F3A7EF07057798 /* Build configuration list for PBXNativeTarget "SynthesisArc_macOS" */;
 			buildPhases = (
 				233FF717B24552B58E7F4237 /* Sources */,
-				9012A3B4C5D6E7F8091A2B3C4 /* Resources */,
+				362C54E6ECA3AD922B571629 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -213,7 +213,7 @@
 			buildConfigurationList = 430187160ACA95FC313CC1C7 /* Build configuration list for PBXNativeTarget "SynthesisArc_iOS" */;
 			buildPhases = (
 				9275461FDFB341D5DA91D95F /* Sources */,
-				A2B3C4D5E6F708192A3B4C5D /* Resources */,
+				9A696577C9A43BEEBA1F82A8 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -264,19 +264,19 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		9012A3B4C5D6E7F8091A2B3C4 /* Resources */ = {
+		362C54E6ECA3AD922B571629 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6D7E8F9012A3B4C5D6E7F80 /* fleet-roster.json in Resources */,
+				2560144A1E8FB0BE1302E0B1 /* fleet-roster.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A2B3C4D5E6F708192A3B4C5D /* Resources */ = {
+		9A696577C9A43BEEBA1F82A8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E8F9012A3B4C5D6E7F8091A2 /* fleet-roster.json in Resources */,
+				5A62C0CDB14D6DD35B21E02A /* fleet-roster.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -289,29 +289,29 @@
 			files = (
 				B464A4B05242CD2EBA9A2EE4 /* AgentDetailView.swift in Sources */,
 				14985EEF0BAA2197BBF97ED9 /* AppConfig.swift in Sources */,
-				J7E8F9012A3B4C5D6E7F8092A /* BroadcastService.swift in Sources */,
 				BEB9DD6C30F05AD632876345 /* BlackboardView.swift in Sources */,
+				C9B61A1AA93A0D2DFEF494BA /* BroadcastService.swift in Sources */,
 				B6232A732059650BB46DA54E /* ChannelService.swift in Sources */,
 				6E2F167E767AD9CECBE1D6EF /* ChannelsView.swift in Sources */,
 				C6C47F3FABBCE8863730DE38 /* ConnectionStatusBar.swift in Sources */,
 				896582FD393CC095FB2679B3 /* ContentView.swift in Sources */,
-				O2F345C6D7E8F9012A3B4C5D7E /* DirectorConsoleView.swift in Sources */,
 				5AB8773D7D67CC1AECFB297B /* CoordinationStreamService.swift in Sources */,
-				G4B5C6D7E8F9012A3B4C5D6E /* PushNotificationService.swift in Sources */,
-				E8F9A0B1C2D3E4F5A6B7C8D9 /* DMService.swift in Sources */,
+				D3A32421E9D0DE34D60F33BA /* DMService.swift in Sources */,
 				6059559C878436A2657BB967 /* DMView.swift in Sources */,
+				78A768D396FDF650517D26C2 /* DirectorConsoleView.swift in Sources */,
+				2021C1786F76486EC8D5392D /* FleetRoster.swift in Sources */,
 				3036CFDD8D350ACCB6FB3F44 /* FleetService.swift in Sources */,
-				A3B4C5D6E7F8091A2B3C4D5E /* FleetRoster.swift in Sources */,
 				27EF7E7AD13265FA16A2A1AE /* FleetView.swift in Sources */,
 				585FF1D49429132C495CEE77 /* ForgeGraphClient.swift in Sources */,
 				BD53BBD622BF80556F6C0EE9 /* InboxView.swift in Sources */,
-				F1A2B3C4D5E6F708192A3B4C /* MentionText.swift in Sources */,
-				H5C6D7E8F9012A3B4C5D6E7F /* QuickActionsSheet.swift in Sources */,
+				989114A5F24F5C73477232B7 /* MentionText.swift in Sources */,
 				D4E3638B3A4A97A429C08714 /* MenuBarView.swift in Sources */,
 				D39F14C151666093F43A0F68 /* Models.swift in Sources */,
-				L9F012A3B4C5D6E7F8091A2B4 /* OpsGraphService.swift in Sources */,
+				569CB28005B21298ADCDCD83 /* OpsGraphService.swift in Sources */,
 				23A12CB0E41F8B43780DF3CA /* PeerNameResolver.swift in Sources */,
-				D8E9F012A3B4C5D6E7F8091A /* SignalRanker.swift in Sources */,
+				A003A69E423C8A69ECF0C02A /* PushNotificationService.swift in Sources */,
+				13EC97B73A63EDF3EB2DE4C5 /* QuickActionsSheet.swift in Sources */,
+				BE6B2680540EE467799E80B0 /* SignalRanker.swift in Sources */,
 				9177F817C920DB35E60568E0 /* SynthesisArcApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -322,29 +322,29 @@
 			files = (
 				C35020CA069877E8514683EC /* AgentDetailView.swift in Sources */,
 				E059DAD4B68014096DC14084 /* AppConfig.swift in Sources */,
-				K8F9012A3B4C5D6E7F8091A3B /* BroadcastService.swift in Sources */,
 				A2AB0CC32562D533663F936A /* BlackboardView.swift in Sources */,
+				2E52F4452748704174CDDCAB /* BroadcastService.swift in Sources */,
 				C90C48163A7D96679CEB15A5 /* ChannelService.swift in Sources */,
 				AF4AB87A8111C356172E7DD2 /* ChannelsView.swift in Sources */,
 				E651EB022DAAF8D199FF4102 /* ConnectionStatusBar.swift in Sources */,
 				A69FDACE7E5AEC5203DFFBCF /* ContentView.swift in Sources */,
-				N1F234B5C6D7E8F9012A3B4C6D /* DirectorConsoleView.swift in Sources */,
 				1392422CAF708D7880E8EE34 /* CoordinationStreamService.swift in Sources */,
-				F3A4B5C6D7E8F9012A3B4C5D /* PushNotificationService.swift in Sources */,
-				F9A0B1C2D3E4F5A6B7C8D9E0 /* DMService.swift in Sources */,
+				17E08E72B453A2723064A306 /* DMService.swift in Sources */,
 				CD1AB52E212F66F772498969 /* DMView.swift in Sources */,
+				03DD5F480E5DC3D9122828B8 /* DirectorConsoleView.swift in Sources */,
+				E212D58D6668A49FB08DCBB0 /* FleetRoster.swift in Sources */,
 				BB2BD09380E3CF62078BC80A /* FleetService.swift in Sources */,
-				B5C6D7E8F9012A3B4C5D6E7F /* FleetRoster.swift in Sources */,
 				9BC13EAB07BD1A32B9D1E6EF /* FleetView.swift in Sources */,
 				1450B390D0EC93C9B73F0C86 /* ForgeGraphClient.swift in Sources */,
 				CAD7A44CC846C8E74CC0C159 /* InboxView.swift in Sources */,
-				F2A3B4C5D6E7F8091A2B3C4D /* MentionText.swift in Sources */,
-				I6D7E8F9012A3B4C5D6E7F80 /* QuickActionsSheet.swift in Sources */,
+				C286108731FCFA0F265A19E6 /* MentionText.swift in Sources */,
 				EA7279C643A89BCAEEF988B0 /* MenuBarView.swift in Sources */,
 				C96C249FF2336EDE3C7D2C4F /* Models.swift in Sources */,
-				M0F123A4B5C6D7E8F9012A3B5C /* OpsGraphService.swift in Sources */,
+				6EBCFE31C16EA44388531EB5 /* OpsGraphService.swift in Sources */,
 				4B2B61D7DD8FE3E03D017733 /* PeerNameResolver.swift in Sources */,
-				E9F012A3B4C5D6E7F8091A2B /* SignalRanker.swift in Sources */,
+				FF2B67913C58487CAA999B06 /* PushNotificationService.swift in Sources */,
+				6C9615B323A6E194E6610BA1 /* QuickActionsSheet.swift in Sources */,
+				65E5700472607671D90CFB50 /* SignalRanker.swift in Sources */,
 				C2F63FE71EA8D07CA66D3FC5 /* SynthesisArcApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

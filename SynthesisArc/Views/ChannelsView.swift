@@ -77,6 +77,25 @@ struct ChannelThreadView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let err = channelService.error {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(err)
+                        .font(.caption)
+                        .lineLimit(2)
+                    Spacer()
+                    Button {
+                        Task { await channelService.loadHistory(channel: channel.name) }
+                    } label: {
+                        Text("Retry")
+                            .font(.caption.bold())
+                    }
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.12))
+                .foregroundStyle(.orange)
+            }
+
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
                     ForEach(messages, id: \.id) { msg in

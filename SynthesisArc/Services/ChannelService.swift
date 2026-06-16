@@ -42,13 +42,14 @@ class ChannelService: ObservableObject {
         reloadClient()
         do {
             let history = try await client.channelHistory(name: channel, limit: limit)
-            messages[channel] = history
+            storeMessages(history, for: channel)
             if let last = history.max(by: { $0.sentAtUnixMs < $1.sentAtUnixMs }) {
                 updatePreview(channel: channel, message: last)
             }
             error = nil
         } catch {
             self.error = error.localizedDescription
+            print("[ChannelService] loadHistory(\(channel)) failed: \(error)")
         }
     }
 
@@ -68,15 +69,19 @@ class ChannelService: ObservableObject {
         guard !channelMessages.contains(where: { $0.id == message.id }) else { return }
         channelMessages.append(message)
         channelMessages.sort { $0.sentAtUnixMs < $1.sentAtUnixMs }
-        messages[channel] = channelMessages
+        storeMessages(channelMessages, for: channel)
         updatePreview(channel: channel, message: message)
         if activeChannelName != channel {
-            channelUnread[channel, default: 0] += 1
+            var unread = channelUnread
+            unread[channel, default: 0] += 1
+            channelUnread = unread
         }
     }
 
     func markChannelRead(_ channel: String) {
-        channelUnread.removeValue(forKey: channel)
+        var unread = channelUnread
+        unread.removeValue(forKey: channel)
+        channelUnread = unread
     }
 
     func setActiveChannel(_ channel: String?) {
@@ -96,6 +101,15 @@ class ChannelService: ObservableObject {
         if let existing = channelPreviews[channel], existing.lastTimestamp > message.sentAtUnixMs {
             return
         }
-        channelPreviews[channel] = preview
+        var previews = channelPreviews
+        previews[channel] = preview
+        channelPreviews = previews
+    }
+
+    /// Reassign so `@Published` emits — in-place dictionary mutation does not refresh SwiftUI.
+    private func storeMessages(_ channelMessages: [CoordMessage], for channel: String) {
+        var updated = messages
+        updated[channel] = channelMessages
+        messages = updated
     }
 }

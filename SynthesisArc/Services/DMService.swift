@@ -16,8 +16,10 @@ final class DMService: ObservableObject {
     @discardableResult
     func ingestInbound(_ message: CoordMessage) -> Bool {
         guard !inboundMessages.contains(where: { $0.id == message.id }) else { return false }
-        inboundMessages.append(message)
-        inboundMessages.sort { $0.sentAtUnixMs > $1.sentAtUnixMs }
+        var updated = inboundMessages
+        updated.append(message)
+        updated.sort { $0.sentAtUnixMs > $1.sentAtUnixMs }
+        inboundMessages = updated
         return true
     }
 
@@ -33,8 +35,10 @@ final class DMService: ObservableObject {
     func appendOutbound(_ message: CoordMessage) {
         guard message.fromAgentName == localAgentName,
               message.toAgentName != nil else { return }
-        outboundMessages.append(message)
-        outboundMessages.sort { $0.sentAtUnixMs < $1.sentAtUnixMs }
+        var updated = outboundMessages
+        updated.append(message)
+        updated.sort { $0.sentAtUnixMs < $1.sentAtUnixMs }
+        outboundMessages = updated
     }
 
     // MARK: - Queries
@@ -104,7 +108,8 @@ final class DMService: ObservableObject {
     private func reconcileOutbound(with serverMessages: [CoordMessage]) {
         guard !outboundMessages.isEmpty else { return }
         let local = localAgentName
-        outboundMessages.removeAll { optimistic in
+        var updated = outboundMessages
+        updated.removeAll { optimistic in
             guard optimistic.fromAgentName == local,
                   let to = optimistic.toAgentName else { return false }
             return serverMessages.contains { server in
@@ -113,6 +118,7 @@ final class DMService: ObservableObject {
                     && (server.toAgentName == to || server.dmTo != nil)
             }
         }
+        outboundMessages = updated
     }
 }
 

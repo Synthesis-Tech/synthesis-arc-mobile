@@ -108,9 +108,12 @@ struct DMView: View {
         isLoading = true
         do {
             let polled = try await client.pollMessages()
-            dmService.seedInbound(polled)
+            let resolver = PeerNameResolver.shared
+            let enriched = polled.map { resolver.enrich($0) }
+            dmService.seedInbound(enriched)
         } catch {
             print("[DMView] loadMessages error: \(error)")
+            sendError = "Load failed: \(error.localizedDescription)"
         }
         isLoading = false
     }

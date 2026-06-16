@@ -42,7 +42,9 @@ final class CoordinationStreamService: ObservableObject {
     }
 
     func seedInbox(_ messages: [CoordMessage]) {
-        dmService?.seedInbound(messages)
+        let resolver = PeerNameResolver.shared
+        let enriched = messages.map { resolver.enrich($0) }
+        dmService?.seedInbound(enriched)
     }
 
     // MARK: - Reconnect loop
