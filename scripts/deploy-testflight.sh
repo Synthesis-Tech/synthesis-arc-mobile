@@ -20,6 +20,14 @@
 
 set -euo pipefail
 
+# ---- Toolchain hygiene ------------------------------------------------------
+# Xcode's IDEDistributionCreateIPAStep shells out to `rsync` with Apple-only
+# flags (--extended-attributes / -E). A Homebrew rsync (v3.x) on the PATH does
+# not understand those flags and makes -exportArchive fail with the opaque
+# "Copy failed". Force Apple's /usr/bin tools ahead of Homebrew for this run so
+# the system rsync (2.6.9-compatible openrsync) is used.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
+
 # ---- Config -----------------------------------------------------------------
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCHEME="SynthesisArc_iOS"
