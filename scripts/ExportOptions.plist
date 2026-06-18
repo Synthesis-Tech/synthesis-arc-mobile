@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Distribute to App Store Connect / TestFlight -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <key>teamID</key>
+    <string>U8S9ZLXFJ4</string>
+
+    <!-- Let Xcode manage the distribution certificate + App Store provisioning profile -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Upload the build's symbols so TestFlight/Organizer can symbolicate crash reports -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- Do not strip Swift symbols (keeps crash logs readable for internal testing) -->
+    <key>stripSwiftSymbols</key>
+    <false/>
+
+    <!-- Manage app version/build automatically is handled by the script; no bitcode on modern Xcode -->
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Synthesis Arc</string>
+    <string>Forge Commander</string>
     <key>CFBundleDisplayName</key>
-    <string>Synthesis Arc</string>
+    <string>Forge Commander</string>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleVersion</key>
@@ -39,7 +39,27 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>NSUserNotificationsUsageDescription</key>
-    <string>Synthesis Arc alerts you to fleet DMs, @mentions, and degraded agents when the app is in the background.</string>
+    <string>Forge Commander alerts you to fleet DMs, @mentions, and degraded agents when the app is in the background.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.synthesisarc.coordination-refresh</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.synthesisarc.deeplink</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>synthesisarc</string>
+            </array>
+        </dict>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>
@@ -47,5 +67,7 @@
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
