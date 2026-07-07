@@ -11,10 +11,13 @@ class FleetService: ObservableObject {
     @Published var graphdHealthy = false
     @Published var streamConnected = false
     @Published private(set) var isBooted = false
+    @Published var isBootstrapping = false
     @Published var myPeerId: String?
     @Published var mySessionId: String?
     @Published private(set) var roster: FleetRoster = .empty
     @Published private(set) var exceptionCount: Int = 0
+    /// Channel node ids joined at last boot — mapped to names after channel list loads.
+    private(set) var lastBootJoinedChannelIds: [NodeId] = []
 
     private var client: ForgeGraphClient
     private var refreshTimer: Timer?
@@ -28,7 +31,7 @@ class FleetService: ObservableObject {
     init() {
         self.client = AppConfig.shared.makeClient()
         reloadRoster()
-        startPolling()
+        startPolling(runImmediateRefresh: false)
     }
 
     func reloadClient() {
@@ -145,7 +148,8 @@ class FleetService: ObservableObject {
     }
 
     /// Boot as a peer — register session, join channels, snapshot state
-    func bootAsPeer() async {
+    func bootAsPeer(reason: String = "manual") async {
+        CoordinationAuditLog.shared.log("Boot requested (\(reason))", category: .boot)
         let config = AppConfig.shared
         reloadClient()
         reloadRoster()
@@ -153,21 +157,33 @@ class FleetService: ObservableObject {
         guard !config.apiKey.isEmpty else {
             error = "API key required — open Settings"
             isBooted = false
+            PrincipalContext.shared.clear()
             return
         }
 
         do {
             let response = try await client.boot(
                 channels: ["engineering", "ops"],
-                summary: "\(config.agentName) — Synthesis Arc Fleet"
+                summary: "\(config.agentName) — Forge Commander"
             )
             myPeerId = String(response.peerId)
             mySessionId = String(response.sessionId)
+            lastBootJoinedChannelIds = response.joinedChannels
             graphdHealthy = true
             error = nil
             isBooted = true
 
             print("[FleetService] BOOT OK — peer: \(response.peerId), session: \(response.sessionId), pending DMs: \(response.pendingMessages.count)")
+            CoordinationAuditLog.shared.log(
+                "Boot OK — peer \(response.peerId), session \(response.sessionId), pending DMs \(response.pendingMessages.count)",
+                category: .boot
+            )
+
+            PrincipalContext.shared.configure(
+                peerId: response.peerId,
+                sessionId: response.sessionId,
+                agentName: config.agentName
+            )
 
             blackboard = response.blackboardSnapshot.sorted {
                 $0.updatedAtUnixMs > $1.updatedAtUnixMs
@@ -175,17 +191,33 @@ class FleetService: ObservableObject {
             PeerNameResolver.shared.indexBlackboard(blackboard)
 
             if !response.pendingMessages.isEmpty {
-                let resolver = PeerNameResolver.shared
-                let enriched = response.pendingMessages.map { resolver.enrich($0) }
+                let rosterNames = self.roster.allMemberNames
+                let enriched = PeerNameResolver.shared.enrichMessageBatch(
+                    response.pendingMessages,
+                    rosterAgents: rosterNames
+                )
                 dmService?.seedInbound(enriched)
             }
 
-            await channelService?.preloadChannels(["engineering", "ops"])
-            await refresh()
+            if !response.errors.isEmpty {
+                let detail = response.errors.map { "\($0.channel): \($0.reason)" }.joined(separator: "; ")
+                print("[FleetService] boot channel join warnings: \(response.errors)")
+                CoordinationAuditLog.shared.log(
+                    "Boot channel warnings: \(detail)",
+                    category: .boot,
+                    level: .warn
+                )
+            }
         } catch {
             print("[FleetService] BOOT FAILED: \(error)")
             self.error = "Boot failed: \(error.localizedDescription)"
             isBooted = false
+            PrincipalContext.shared.clear()
+            CoordinationAuditLog.shared.log(
+                "Boot failed: \(error.localizedDescription)",
+                category: .boot,
+                level: .error
+            )
         }
     }
 
@@ -233,20 +265,45 @@ class FleetService: ObservableObject {
 
             self.peers = fetchedPeers.fleetSorted()
             self.blackboard = fetchedBoard.sorted { $0.updatedAtUnixMs > $1.updatedAtUnixMs }
+            PeerNameResolver.shared.indexFleetAgents(self.peers)
             PeerNameResolver.shared.indexBlackboard(self.blackboard)
             self.error = nil
             refreshExceptionCount()
+        } catch is CancellationError {
+            CoordinationAuditLog.shared.log("Fleet refresh cancelled", category: .network)
         } catch {
             self.error = error.localizedDescription
             self.graphdHealthy = false
+            CoordinationAuditLog.shared.log(
+                "Fleet refresh failed: \(error.localizedDescription)",
+                category: .network,
+                level: .warn
+            )
         }
 
         isLoading = false
     }
 
-    private func startPolling() {
+    /// Channel list, membership, fleet refresh — run after boot; safe to overlap with SSE connect.
+    func completeBootSetup() async {
+        CoordinationAuditLog.shared.log("Boot setup — loading channels and fleet", category: .boot)
+        await channelService?.loadChannels()
+        channelService?.applyBootJoinedChannelIds(lastBootJoinedChannelIds)
+        await channelService?.syncPersistedPrivateMembership()
+        await channelService?.syncMembership(force: true)
+        await refresh()
+        // Warm only default channels; full history loads when a thread is opened.
+        Task(priority: .utility) {
+            await channelService?.preloadChannels(["engineering", "ops"])
+        }
+        CoordinationAuditLog.shared.log("Boot setup complete", category: .boot)
+    }
+
+    private func startPolling(runImmediateRefresh: Bool = true) {
         restartPolling()
-        Task { await refresh() }
+        if runImmediateRefresh {
+            Task { await refresh() }
+        }
     }
 
     private func restartPolling() {
@@ -265,10 +322,38 @@ class FleetService: ObservableObject {
     }
 
     private func refreshExceptionCount() {
+        let watchlistRaw = UserDefaults.standard.string(forKey: FleetWatchlist.storageKey) ?? ""
+        let watchlist = FleetWatchlist.decode(watchlistRaw)
         exceptionCount = SignalRanker.needsAttention(
             peers: peers,
-            watchlist: [],
+            watchlist: watchlist,
             dmUnreadAgents: dmUnreadAgents
         ).count
+    }
+
+    /// Re-boot peer session and restart live services after settings change.
+    func applySettingsAndReconnect(
+        streamService: CoordinationStreamService,
+        channelService: ChannelService,
+        dmService: DMService
+    ) async {
+        CoordinationAuditLog.shared.log("Apply & Reconnect started", category: .settings)
+        error = nil
+        reloadClient()
+        reloadRoster()
+        channelService.reloadClient()
+        streamService.stop()
+        dmService.stopPolling()
+        isBootstrapping = true
+        defer { isBootstrapping = false }
+        await bootAsPeer(reason: "apply-reconnect")
+        CoordinationHotLayer.shared.start(
+            fleetService: self,
+            dmService: dmService,
+            channelService: channelService,
+            streamService: streamService
+        )
+        streamService.start(force: true)
+        await completeBootSetup()
     }
 }

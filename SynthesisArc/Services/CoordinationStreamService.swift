@@ -7,6 +7,7 @@ import Foundation
 @MainActor
 final class CoordinationStreamService: ObservableObject {
     @Published private(set) var isConnected = false
+    @Published private(set) var isConnecting = false
     @Published private(set) var unreadCount = 0
     @Published private(set) var lastError: String?
 
@@ -16,13 +17,73 @@ final class CoordinationStreamService: ObservableObject {
 
     private var streamTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
-    func start() {
-        stop()
+
+    /// True while a reconnect loop is running but bytes are not yet flowing.
+    var isPendingConnection: Bool {
+        streamTask != nil && !isConnected
+    }
+
+    /// Start (or restart) the SSE reconnect loop and heartbeat.
+    func start(force: Bool = false) {
+        if !force {
+            if isConnected {
+                CoordinationAuditLog.shared.log("SSE start skipped — already connected", category: .sse)
+                return
+            }
+            if streamTask != nil {
+                CoordinationAuditLog.shared.log(
+                    "SSE start skipped — handshake already in progress",
+                    category: .sse
+                )
+                return
+            }
+        } else {
+            CoordinationAuditLog.shared.log("SSE force restart requested", category: .sse)
+            stop()
+        }
+        CoordinationAuditLog.shared.log("SSE start requested", category: .sse)
+        beginStreaming()
+    }
+
+    /// Resume only when disconnected — avoids tearing down a live stream on foreground.
+    func resumeIfNeeded() {
+        guard !isConnected else {
+            CoordinationAuditLog.shared.log("SSE resume skipped — already live", category: .sse)
+            return
+        }
+        guard streamTask == nil else {
+            CoordinationAuditLog.shared.log("SSE resume skipped — reconnect loop active", category: .sse)
+            return
+        }
+        CoordinationAuditLog.shared.log("SSE resume requested", category: .sse)
+        beginStreaming()
+    }
+
+    /// Human-readable SSE state for diagnostics and connection tests.
+    var connectionStatusLabel: String {
+        if isConnected { return "SSE + REST live" }
+        if isPendingConnection { return "REST live · SSE connecting" }
+        if lastError != nil { return "REST live · SSE unavailable" }
+        return "REST live · SSE optional"
+    }
+
+    /// Wait until SSE connects or the timeout elapses.
+    func waitForConnection(timeout: TimeInterval = 30) async -> Bool {
+        let steps = max(1, Int(timeout * 10))
+        for _ in 0..<steps where !isConnected {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return isConnected
+    }
+
+    private func beginStreaming() {
         streamTask = Task { [weak self] in
             await self?.runWithReconnect()
         }
-        heartbeatTask = Task { [weak self] in
-            await self?.runHeartbeat()
+        if heartbeatTask == nil {
+            heartbeatTask = Task { [weak self] in
+                await self?.runHeartbeat()
+            }
         }
     }
 
@@ -32,6 +93,7 @@ final class CoordinationStreamService: ObservableObject {
         heartbeatTask?.cancel()
         heartbeatTask = nil
         isConnected = false
+        isConnecting = false
         fleetService?.setStreamConnected(false)
     }
 
@@ -39,9 +101,16 @@ final class CoordinationStreamService: ObservableObject {
         unreadCount = 0
     }
 
+    func reduceUnread(by count: Int) {
+        unreadCount = max(0, unreadCount - count)
+    }
+
     func seedInbox(_ messages: [CoordMessage]) {
-        let resolver = PeerNameResolver.shared
-        let enriched = messages.map { resolver.enrich($0) }
+        let roster = Array(PeerNameResolver.shared.nameMap.keys).sorted()
+        let enriched = PeerNameResolver.shared.enrichMessageBatch(
+            messages,
+            rosterAgents: roster
+        )
         dmService?.seedInbound(enriched)
     }
 
@@ -56,15 +125,25 @@ final class CoordinationStreamService: ObservableObject {
                 continue
             }
 
+            isConnecting = true
+            lastError = nil
+            let connectStarted = Date()
             do {
-                try await consumeStream()
+                try await consumeStream(connectStarted: connectStarted)
                 backoff = 1
             } catch is CancellationError {
+                isConnecting = false
                 break
             } catch {
-                lastError = error.localizedDescription
+                lastError = Self.describeStreamError(error)
                 isConnected = false
+                isConnecting = false
                 fleetService?.setStreamConnected(false)
+                CoordinationAuditLog.shared.log(
+                    "SSE disconnected: \(lastError ?? error.localizedDescription)",
+                    category: .sse,
+                    level: .warn
+                )
                 print("[CoordinationStream] disconnected: \(error)")
             }
 
@@ -74,32 +153,14 @@ final class CoordinationStreamService: ObservableObject {
         }
     }
 
-    private func consumeStream() async throws {
-        let config = AppConfig.shared
-        var components = URLComponents()
-        components.scheme = "http"
-        components.host = config.graphdHost
-        components.port = config.graphdPort
-        components.path = "/api/v1/events/coordination"
-        // Omit `channels` filter — receive all channel_message events for channels
-        // the booted session is a member of (not only engineering/ops).
+    private func consumeStream(connectStarted: Date) async throws {
+        let client = AppConfig.shared.makeClient()
+        CoordinationAuditLog.shared.log(
+            "SSE handshake started → \(await client.graphdBaseURLString)/api/v1/events/coordination",
+            category: .sse
+        )
 
-        guard let url = components.url else {
-            throw ForgeGraphError.invalidURL("/api/v1/events/coordination")
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-        request.setValue("ApiKey \(config.apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue(config.agentName, forHTTPHeaderField: "X-Agent-Id")
-
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.timeoutIntervalForRequest = 86400
-        sessionConfig.timeoutIntervalForResource = 86400
-        let session = URLSession(configuration: sessionConfig)
-
-        let (bytes, response) = try await session.bytes(for: request)
+        let (bytes, response) = try await client.openCoordinationStream()
         guard let http = response as? HTTPURLResponse else {
             throw ForgeGraphError.httpError(0)
         }
@@ -108,8 +169,22 @@ final class CoordinationStreamService: ObservableObject {
         }
 
         isConnected = true
+        isConnecting = false
         lastError = nil
         fleetService?.setStreamConnected(true)
+        let config = AppConfig.shared
+        let elapsed = Int(Date().timeIntervalSince(connectStarted) * 1000)
+        CoordinationAuditLog.shared.log(
+            "SSE connected to \(config.graphdHost):\(config.graphdPort) in \(elapsed)ms",
+            category: .sse
+        )
+        if elapsed > 10_000 {
+            CoordinationAuditLog.shared.log(
+                "Slow SSE handshake — keep Tailscale MagicDNS hostname in Settings (not raw IP)",
+                category: .sse,
+                level: .warn
+            )
+        }
         print("[CoordinationStream] connected")
 
         var eventName: String?
@@ -138,6 +213,7 @@ final class CoordinationStreamService: ObservableObject {
         }
 
         isConnected = false
+        isConnecting = false
         fleetService?.setStreamConnected(false)
     }
 
@@ -154,10 +230,13 @@ final class CoordinationStreamService: ObservableObject {
                   let content = event.content,
                   let messageId = event.messageId,
                   let timestamp = event.timestamp else { return }
+            PeerNameResolver.shared.indexLiveMessage(id: messageId, fromAgent: from)
             let msg = CoordMessage.fromSSE(messageId: messageId, from: from, content: content, timestamp: timestamp)
-            if dmService?.ingestInbound(msg) == true {
+            let localAgent = AppConfig.shared.agentName
+            if from == localAgent, let peer = event.to {
+                dmService?.ingestOutboundEcho(msg, to: peer)
+            } else if dmService?.ingestInbound(msg) == true {
                 unreadCount += 1
-                let localAgent = AppConfig.shared.agentName
                 if from != localAgent {
                     PushNotificationService.shared.notifyDM(from: from, content: content)
                 }
@@ -169,6 +248,7 @@ final class CoordinationStreamService: ObservableObject {
                   let content = event.content,
                   let messageId = event.messageId,
                   let timestamp = event.timestamp else { return }
+            PeerNameResolver.shared.indexLiveChannelMessage(id: messageId, fromAgent: from)
             let msg = CoordMessage.fromSSEChannel(
                 messageId: messageId,
                 from: from,
@@ -186,6 +266,11 @@ final class CoordinationStreamService: ObservableObject {
                     from: from,
                     content: content
                 )
+            } else if PushNotificationService.isTargetedReplyToOtherAgent(
+                in: content,
+                localAgent: localAgent
+            ) {
+                break
             } else if PushNotificationService.isWatchlistChannel(channel) {
                 PushNotificationService.shared.notifyChannel(
                     channel: channel,
@@ -223,6 +308,16 @@ final class CoordinationStreamService: ObservableObject {
             let client = AppConfig.shared.makeClient()
             try? await client.heartbeat()
         }
+    }
+
+    private static func describeStreamError(_ error: Error) -> String {
+        if let urlError = error as? URLError, urlError.code == .appTransportSecurityRequiresSecureConnection {
+            return """
+            ATS blocked HTTP to graphd. Keep Host as Tailscale name (e.g. macbook-pro), not a 100.x IP. \
+            REST and SSE must use the same hostname.
+            """
+        }
+        return error.localizedDescription
     }
 }
 

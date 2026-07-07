@@ -83,7 +83,8 @@ final class PushNotificationService: ObservableObject {
             identifier: "dm-\(from)-\(Date().timeIntervalSince1970)",
             title: "DM from \(from)",
             body: preview,
-            severity: .warn
+            severity: .warn,
+            route: .inbox(sender: from)
         )
     }
 
@@ -94,7 +95,8 @@ final class PushNotificationService: ObservableObject {
             identifier: "mention-\(channel)-\(from)-\(Date().timeIntervalSince1970)",
             title: "Mention in #\(channel)",
             body: "\(from): \(preview)",
-            severity: .warn
+            severity: .warn,
+            route: .channel(name: channel)
         )
     }
 
@@ -104,7 +106,8 @@ final class PushNotificationService: ObservableObject {
             identifier: "degraded-\(agent)-\(Date().timeIntervalSince1970)",
             title: "Agent degraded",
             body: "\(agent): \(Self.truncate(value, max: 120))",
-            severity: .crit
+            severity: .crit,
+            route: .fleet(agent: agent)
         )
     }
 
@@ -114,7 +117,8 @@ final class PushNotificationService: ObservableObject {
             identifier: "channel-\(channel)-\(from)-\(Date().timeIntervalSince1970)",
             title: "#\(channel)",
             body: "\(from): \(Self.truncate(preview))",
-            severity: .info
+            severity: .info,
+            route: .channel(name: channel)
         )
     }
 
@@ -127,6 +131,18 @@ final class PushNotificationService: ObservableObject {
             }
             return false
         }
+    }
+
+    /// Channel reply header (`↩ msg/… @agent`) scoped to another agent — skip ambient watchlist alerts.
+    static func isTargetedReplyToOtherAgent(in content: String, localAgent: String) -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("↩") else { return false }
+        let mentions = MentionParser.segments(in: content).compactMap { segment -> String? in
+            if case .mention(let text) = segment { return text }
+            return nil
+        }
+        guard let first = mentions.first else { return false }
+        return first != "@\(localAgent)"
     }
 
     static func isDegradedBlackboardUpdate(key: String, value: String?) -> Bool {
@@ -159,11 +175,15 @@ final class PushNotificationService: ObservableObject {
         identifier: String,
         title: String,
         body: String,
-        severity: NotificationSeverity
+        severity: NotificationSeverity,
+        route: DeepLinkRoute? = nil
     ) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
+        if let route {
+            content.userInfo = route.userInfo
+        }
 
         switch severity {
         case .crit:

@@ -1,17 +1,30 @@
 import SwiftUI
 
-/// Connection status bar — forge-graphd health + SSE live state
+/// Connection status bar — graphd health first; SSE is optional acceleration.
 struct ConnectionStatusBar: View {
+    @ObservedObject private var hotLayer = CoordinationHotLayer.shared
     @EnvironmentObject var fleetService: FleetService
     @EnvironmentObject var streamService: CoordinationStreamService
+    @EnvironmentObject var dmService: DMService
+    @EnvironmentObject var channelService: ChannelService
 
     var body: some View {
-        if !fleetService.graphdHealthy || fleetService.error != nil {
+        if fleetService.isBootstrapping {
+            reconnectingBanner(
+                title: "Reconnecting…",
+                subtitle: fleetService.graphdHealthy ? "Re-booting peer session" : "Connecting to forge-graphd"
+            )
+        } else if !fleetService.graphdHealthy || fleetService.error != nil {
             errorBanner
         } else if streamService.isConnected {
-            liveBanner
-        } else if let streamError = streamService.lastError {
-            reconnectingBanner(streamError)
+            sseLiveBanner
+        } else if streamService.isPendingConnection || streamService.isConnecting {
+            reconnectingBanner(
+                title: "Connecting live stream…",
+                subtitle: "REST polling active"
+            )
+        } else if fleetService.isBooted {
+            restLiveBanner
         }
     }
 
@@ -24,11 +37,20 @@ struct ConnectionStatusBar: View {
             Spacer()
             Button("Retry") {
                 Task {
-                    await fleetService.bootAsPeer()
-                    await fleetService.refresh()
-                    streamService.start()
+                    fleetService.isBootstrapping = true
+                    defer { fleetService.isBootstrapping = false }
+                    await fleetService.bootAsPeer(reason: "status-bar-retry")
+                    CoordinationHotLayer.shared.start(
+                        fleetService: fleetService,
+                        dmService: dmService,
+                        channelService: channelService,
+                        streamService: streamService
+                    )
+                    streamService.start(force: true)
+                    await fleetService.completeBootSetup()
                 }
             }
+            .disabled(fleetService.isBootstrapping)
             .font(.caption)
             .buttonStyle(.bordered)
             .controlSize(.mini)
@@ -39,14 +61,14 @@ struct ConnectionStatusBar: View {
         .foregroundStyle(.red)
     }
 
-    private var liveBanner: some View {
+    private var sseLiveBanner: some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(.green)
                 .frame(width: 6, height: 6)
             Text("Live")
                 .font(.caption.bold())
-            Text("SSE coordination stream")
+            Text("SSE + REST")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -58,22 +80,54 @@ struct ConnectionStatusBar: View {
         .foregroundStyle(.primary)
     }
 
-    private func reconnectingBanner(_ message: String) -> some View {
+    private var restLiveBanner: some View {
         HStack(spacing: 6) {
-            ProgressView()
-                .controlSize(.mini)
-            Text("Reconnecting SSE…")
+            Circle()
+                .fill(.green)
+                .frame(width: 6, height: 6)
+            Text("Live")
+                .font(.caption.bold())
+            Text(restSubtitle)
                 .font(.caption)
-            Text(message)
-                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer()
+            GraphdHealthDot()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background(.green.opacity(0.08))
+        .foregroundStyle(.primary)
+    }
+
+    private func reconnectingBanner(title: String, subtitle: String) -> some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .controlSize(.mini)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption.bold())
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            GraphdHealthDot()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.orange.opacity(0.1))
+        .background(.orange.opacity(0.12))
         .foregroundStyle(.orange)
+    }
+
+    private var restSubtitle: String {
+        if hotLayer.isRunning {
+            if streamService.isPendingConnection || streamService.isConnecting {
+                return "REST poll · SSE connecting"
+            }
+            return "REST poll · SSE optional"
+        }
+        return "REST coordination"
     }
 }
 
