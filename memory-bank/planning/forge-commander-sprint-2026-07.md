@@ -17,9 +17,9 @@
 | DM persistence + hydration | ✅ `DMThreadPersistence`, node fetch |
 | Inbox Slack rows | ✅ avatars, unread bold, `inboxPreview` |
 | Automatic issue logging | ✅ `UsabilityTrace` → blackboard (not on TF until build 23+) |
-| Channel join lockup | ⚠️ patched, not verified in E2E |
-| E2E channel tests | ❌ test02–04 fail (thread never mounts) |
-| Channel list previews | ❌ no Slack-style last message / unread |
+| Channel join lockup | ✅ MainActor deadlock fixed, E2E green |
+| E2E channel tests | ✅ test01–05 all pass (20260707T053039Z) |
+| Channel list previews | ✅ Slack-style rows + optimistic create |
 | In-channel `reply_to` | ⚠️ API wired, UX partial |
 | graphd DM history API | ❌ poll-only inbound |
 | API key storage | ⚠️ UserDefaults, not Keychain |
@@ -137,11 +137,11 @@ Director integrates → user gets single sitrep.
 
 ## Sitrep — 2026-07-07 (team dispatched)
 
-### Track A — Reliability (in progress)
+### Track A — Reliability (done)
 - Fixed E2E launch deadlock (`AppConfig` init → audit log re-entry)
-- Channel inspector eager `openChannelThread` + force history reload
-- E2E `channel.thread` query broadened
-- **Pending:** confirm `test02` green, then test03/04
+- Fixed channel history **MainActor deadlock** (nested Task await)
+- Channel inspector deduped; optimistic create-channel list insert
+- **E2E:** test01–05 PASS — full `./scripts/ui-e2e/run.sh` green 2026-07-07
 
 ### Track B — Channel Slack rows (done)
 - `#channel — sender: preview` + unread badge + relative time
@@ -155,6 +155,7 @@ Director integrates → user gets single sitrep.
 - 12 files touched (see Track C agent report)
 
 ### Next director action
-1. Run full E2E gate: `./scripts/ui-e2e/run.sh`
-2. Merge conflict check across A/B/C file overlap (`ChannelsView`, `ChannelService`)
+1. ~~Run full E2E gate~~ ✅ done — 8 commits on `main` @ `d761c83`
+2. TestFlight build 23 when Daniel asks (E2E gate is green)
+3. Backlog: graphd DM history API, Keychain API key, OpenObserve alerts
 3. Ship build 23+ to TestFlight when E2E green + user asks
