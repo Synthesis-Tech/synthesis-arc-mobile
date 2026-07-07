@@ -267,6 +267,7 @@ class FleetService: ObservableObject {
             self.blackboard = fetchedBoard.sorted { $0.updatedAtUnixMs > $1.updatedAtUnixMs }
             PeerNameResolver.shared.indexFleetAgents(self.peers)
             PeerNameResolver.shared.indexBlackboard(self.blackboard)
+            dmService?.reindexStoredMessages()
             self.error = nil
             refreshExceptionCount()
         } catch is CancellationError {

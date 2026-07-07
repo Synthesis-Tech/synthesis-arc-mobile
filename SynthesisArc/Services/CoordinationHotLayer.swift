@@ -77,6 +77,7 @@ final class CoordinationHotLayer: ObservableObject {
 
         await dmService.pollInbox()
         await fleetService.refresh()
+        await dmService.hydrateAllEmptyMessages()
         // Channel history loads only when a thread is opened — polling here caused UI stalls.
 
         lastPollAt = Date()

@@ -81,6 +81,9 @@ struct RecentConversationRow: View {
         if summary.messageCount == 0 {
             return "No messages yet"
         }
-        return "Tap to view message"
+        if summary.latestMessage.hasDisplayableContent {
+            return ReplyContext.truncate(summary.latestMessage.content, maxLength: 120)
+        }
+        return "Loading message…"
     }
 }

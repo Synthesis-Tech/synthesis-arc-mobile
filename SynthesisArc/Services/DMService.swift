@@ -51,13 +51,14 @@ final class DMService: ObservableObject {
 
     /// Seed inbound messages from REST poll / boot pending DMs.
     func seedInbound(_ messages: [CoordMessage]) {
+        guard !messages.isEmpty else { return }
         let roster = rosterAgentNames()
         let enriched = PeerNameResolver.shared.enrichMessageBatch(messages, rosterAgents: roster)
         for message in enriched {
             ingestInbound(message)
         }
+        reindexStoredMessages()
         refreshActiveThread()
-        Task { await hydrateAllEmptyMessages() }
     }
 
     private func rosterAgentNames() -> [String] {
@@ -109,8 +110,8 @@ final class DMService: ObservableObject {
         guard !AppConfig.shared.apiKey.isEmpty else { return }
         do {
             let polled = try await client.pollMessages()
-            let resolver = PeerNameResolver.shared
-            seedInbound(polled.map { resolver.enrich($0) })
+            seedInbound(polled)
+            await hydrateAllEmptyMessages()
         } catch {
             print("[DMService] pollInbox failed: \(error)")
         }
@@ -205,15 +206,29 @@ final class DMService: ObservableObject {
     /// Inbound messages from a single sender (inbox grouping).
     func messages(from sender: String) -> [CoordMessage] {
         inboundMessages
-            .filter { senderAgentName(for: $0) == sender }
+            .filter { inboundPeerName(for: $0) == sender }
             .sorted { $0.sentAtUnixMs > $1.sentAtUnixMs }
     }
 
     /// Bilateral thread between local agent and `peerAgentName` (both directions).
     func messages(with peerAgentName: String) -> [CoordMessage] {
-        let inbound = inboundMessages.filter { senderAgentName(for: $0) == peerAgentName }
+        let inbound = inboundMessages.filter { inboundPeerName(for: $0) == peerAgentName }
         let outbound = outboundMessages.filter { $0.toAgentName == peerAgentName }
         return (inbound + outbound).sorted { $0.sentAtUnixMs < $1.sentAtUnixMs }
+    }
+
+    /// Re-resolve sender agent slugs after fleet/blackboard/session index updates.
+    func reindexStoredMessages() {
+        let roster = rosterAgentNames()
+        let reinbound = PeerNameResolver.shared.enrichMessageBatch(inboundMessages, rosterAgents: roster)
+        let changed = zip(reinbound, inboundMessages).contains { lhs, rhs in
+            lhs.fromAgentName != rhs.fromAgentName || lhs.content != rhs.content
+        } || reinbound.count != inboundMessages.count
+        if changed {
+            inboundMessages = reinbound
+            persistThreads()
+        }
+        refreshActiveThread()
     }
 
     /// Unread inbound messages not yet opened in a thread.
@@ -245,18 +260,18 @@ final class DMService: ObservableObject {
         var byPeer: [String: [CoordMessage]] = [:]
 
         for message in inboundMessages {
-            let peer = resolvedPeerAgentName(for: message)
-            guard !peer.isEmpty, peer != "unknown", peer != localAgentName else { continue }
+            let peer = inboundPeerName(for: message)
+            guard isValidPeer(peer) else { continue }
             byPeer[peer, default: []].append(message)
         }
         for message in outboundMessages {
-            guard let peer = message.toAgentName, peer != localAgentName else { continue }
+            guard let peer = message.toAgentName, isValidPeer(peer) else { continue }
             byPeer[peer, default: []].append(message)
         }
 
         var summaries: [RecentConversationSummary] = byPeer.compactMap { peer, messages in
             guard let latest = bestPreviewMessage(from: messages) else { return nil }
-            let outbound = latest.fromAgentName == localAgentName || latest.toAgentName != nil
+            let outbound = latest.fromAgentName == localAgentName
             return RecentConversationSummary(
                 peerAgentName: peer,
                 latestMessage: latest,
@@ -291,7 +306,7 @@ final class DMService: ObservableObject {
 
     /// Legacy inbound-only grouping — prefer `unifiedConversations()`.
     func conversationSummaries() -> [DMConversationSummary] {
-        let grouped = Dictionary(grouping: inboundMessages) { resolvedPeerAgentName(for: $0) }
+        let grouped = Dictionary(grouping: inboundMessages) { inboundPeerName(for: $0) }
         return grouped
             .compactMap { sender, msgs -> DMConversationSummary? in
                 guard isValidPeer(sender) else { return nil }
@@ -327,7 +342,7 @@ final class DMService: ObservableObject {
     /// Backfill empty bodies across every conversation (inbox preview + threads).
     func hydrateAllEmptyMessages() async {
         let peers = Set(
-            inboundMessages.compactMap { resolvedPeerAgentName(for: $0) }
+            inboundMessages.map { inboundPeerName(for: $0) }
             + outboundMessages.compactMap(\.toAgentName)
         ).filter { isValidPeer($0) }
         for peer in peers {
@@ -338,7 +353,7 @@ final class DMService: ObservableObject {
 
     /// Backfill empty message bodies from graph node properties.
     func hydrateThreadContent(for peerAgentName: String) async {
-        let targets = messages(with: peerAgentName).filter { !$0.hasReadableBody && $0.id > 0 }
+        let targets = messages(with: peerAgentName).filter { !$0.hasDisplayableContent && $0.id > 0 }
         guard !targets.isEmpty else { return }
 
         let client = AppConfig.shared.makeClient()
@@ -373,24 +388,21 @@ final class DMService: ObservableObject {
         !peer.isEmpty && peer != "unknown" && peer != localAgentName
     }
 
-    private func senderAgentName(for message: CoordMessage) -> String {
-        resolvedPeerAgentName(for: message)
-    }
-
-    /// Resolve inbound sender to a stable agent name (never a raw session id when avoidable).
-    private func resolvedPeerAgentName(for message: CoordMessage) -> String {
-        let enriched = PeerNameResolver.shared.enrich(message)
-        if let name = enriched.fromAgentName, !name.isEmpty, isValidPeer(name) {
-            if name.contains("-") || !name.allSatisfy(\.isNumber) {
-                return name
-            }
+    /// Canonical peer slug for an inbound DM — stable across poll (session id) and SSE (agent name).
+    private func inboundPeerName(for message: CoordMessage) -> String {
+        let roster = rosterAgentNames()
+        let enriched = PeerNameResolver.shared.enrich(message, rosterAgents: roster)
+        if let agent = MessageAgentResolver.agentName(for: enriched, rosterAgents: roster),
+           isValidPeer(agent) {
+            return agent
         }
         if let from = enriched.from,
            let agent = PeerNameResolver.shared.agentName(forSession: from),
            isValidPeer(agent) {
             return agent
         }
-        if let name = enriched.fromAgentName, !name.isEmpty {
+        if let name = enriched.fromAgentName, !name.isEmpty, isValidPeer(name),
+           name.contains("-") || !name.allSatisfy(\.isNumber) {
             return name
         }
         if let from = enriched.from {

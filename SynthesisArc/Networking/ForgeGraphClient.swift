@@ -131,12 +131,17 @@ actor ForgeGraphClient {
               let value = properties[key] else {
             return nil
         }
-        if let string = value as? String {
+        if let string = value as? String, !string.isEmpty {
             return string
         }
         if let tagged = value as? [String: Any] {
-            if let string = tagged["String"] as? String { return string }
-            if let string = tagged["string"] as? String { return string }
+            for key in ["String", "string", "Text", "text"] {
+                if let string = tagged[key] as? String, !string.isEmpty { return string }
+            }
+            // forge-types PropertyValue externally-tagged enum — first value wins.
+            if tagged.count == 1, let only = tagged.values.first as? String, !only.isEmpty {
+                return only
+            }
         }
         return nil
     }

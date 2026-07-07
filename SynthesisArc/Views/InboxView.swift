@@ -117,7 +117,7 @@ struct InboxView: View {
         error = nil
         do {
             let polled = try await client.pollMessages()
-            streamService.seedInbox(polled)
+            dmService.seedInbound(polled)
             await dmService.hydrateAllEmptyMessages()
         } catch {
             self.error = error.localizedDescription
