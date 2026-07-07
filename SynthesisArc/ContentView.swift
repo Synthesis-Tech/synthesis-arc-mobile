@@ -1,64 +1,51 @@
 import SwiftUI
 
-private struct FleetTabBadge: ViewModifier {
-    let count: Int
-
-    func body(content: Content) -> some View {
-        if count > 0 {
-            content.badge(count)
-        } else {
-            content
-        }
-    }
-}
-
 struct ContentView: View {
-    @EnvironmentObject var fleetService: FleetService
-    @EnvironmentObject var streamService: CoordinationStreamService
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject var commandCenterState: CommandCenterState
+    @EnvironmentObject var dmService: DMService
     @EnvironmentObject var channelService: ChannelService
+    @EnvironmentObject var streamService: CoordinationStreamService
+    @ObservedObject private var deepLinkCoordinator = DeepLinkCoordinator.shared
 
     var body: some View {
-        TabView {
-            FleetView()
-                .modifier(FleetTabBadge(count: fleetService.exceptionCount))
-                .tabItem {
-                    Label("Fleet", systemImage: "circle.grid.3x3.fill")
-                }
-
-            InboxView()
-                .badge(streamService.unreadCount)
-                .tabItem {
-                    Label("Inbox", systemImage: "tray.fill")
-                }
-
-            ChannelsView()
-                .badge(channelService.totalChannelUnread)
-                .tabItem {
-                    Label("Channels", systemImage: "bubble.left.and.bubble.right.fill")
-                }
-
-            DirectorConsoleView()
-                .tabItem {
-                    Label("Director", systemImage: "bolt.fill")
-                }
-
-            BlackboardView()
-                .tabItem {
-                    Label("Blackboard", systemImage: "list.clipboard.fill")
-                }
-
-            NavigationStack {
-                SettingsView()
+        Group {
+            #if os(iOS)
+            if E2EMode.isActive || horizontalSizeClass == .regular {
+                CommandCenterShellView()
+            } else {
+                PhoneTabShell()
             }
-            .tabItem {
-                Label("Settings", systemImage: "gear")
+            #else
+            CommandCenterShellView()
+            #endif
+        }
+        .onChange(of: deepLinkCoordinator.publishEpoch) { _, _ in
+            consumePendingDeepLink()
+        }
+        .task {
+            consumePendingDeepLink()
+        }
+    }
+
+    private func consumePendingDeepLink() {
+        guard let route = deepLinkCoordinator.consume() else { return }
+        CoordinationAuditLog.shared.log("Deep link consumed → \(route.auditLabel)", category: .lifecycle)
+        commandCenterState.apply(route: route)
+        switch route {
+        case .inbox(let sender):
+            Task {
+                await dmService.markConversationDelivered(sender: sender)
+                await dmService.hydrateThreadContent(for: sender)
+                streamService.reduceUnread(by: dmService.messages(from: sender).count)
             }
+        case .channel(let name):
+            channelService.setActiveChannel(name)
+            Task {
+                _ = await channelService.openChannelThread(name)
+            }
+        case .fleet:
+            break
         }
-        .overlay(alignment: .top) {
-            ConnectionStatusBar()
-        }
-        #if os(macOS)
-        .frame(minWidth: 800, minHeight: 600)
-        #endif
     }
 }
