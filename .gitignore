@@ -1,4 +1,9 @@
 .visual-qa/
+.ui-e2e/
+.cursor/
+.grok/
+.screenshot-check.png
+config/e2e.env
 *.xcuserstate
 xcuserdata/
 DerivedData/

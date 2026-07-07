@@ -12,12 +12,11 @@ settings:
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: U8S9ZLXFJ4
     CODE_SIGN_STYLE: Automatic
-    PRODUCT_NAME: "Synthesis Arc"
 
 targets:
-  SynthesisArc:
+  SynthesisArc_iOS:
     type: application
-    platform: [iOS, macOS]
+    platform: iOS
     sources:
       - path: SynthesisArc
         excludes:
@@ -26,11 +25,55 @@ targets:
       base:
         INFOPLIST_FILE: SynthesisArc/Info.plist
         GENERATE_INFOPLIST_FILE: false
-        SUPPORTS_MACCATALYST: false
+        PRODUCT_BUNDLE_IDENTIFIER: com.synthesisarc.SynthesisArc-iOS
+        PRODUCT_NAME: SynthesisArc
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
+  SynthesisArc_macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: SynthesisArc
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        INFOPLIST_FILE: SynthesisArc/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        PRODUCT_BUNDLE_IDENTIFIER: com.synthesisarc.SynthesisArc-macOS
+        PRODUCT_NAME: SynthesisArc
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
-        Release:
-          SWIFT_OPTIMIZATION_LEVEL: -O
+
+  SynthesisArcUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SynthesisArcUITests
+    dependencies:
+      - target: SynthesisArc_iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.synthesisarc.SynthesisArcUITests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: SynthesisArc_iOS
+
+schemes:
+  SynthesisArc_iOS:
+    build:
+      targets:
+        SynthesisArc_iOS: all
+    test:
+      targets:
+        - SynthesisArcUITests
+      gatherCoverageData: false
+  SynthesisArc_macOS:
+    build:
+      targets:
+        SynthesisArc_macOS: all

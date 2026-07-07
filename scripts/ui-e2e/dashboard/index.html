@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Forge Commander UI E2E</title>
+  <style>
+    :root { font-family: -apple-system, system-ui, sans-serif; background: #0f1115; color: #e8eaed; }
+    body { margin: 0; padding: 24px; max-width: 1100px; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .sub { color: #9aa0a6; margin-bottom: 24px; }
+    .run { border: 1px solid #2d3139; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .pass { border-color: #1e8e3e; }
+    .fail { border-color: #d93025; }
+    pre { background: #1a1d24; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 360px; }
+    button { background: #394457; color: #fff; border: 0; padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #4a5870; }
+    .tests { margin: 8px 0; font-size: 14px; }
+    .ok { color: #81c995; }
+    .bad { color: #f28b82; }
+  </style>
+</head>
+<body>
+  <h1>Forge Commander — UI E2E Dashboard</h1>
+  <p class="sub">Local test runs from <code>./scripts/ui-e2e/run.sh</code>. Agents: read audit tail + failed tests here.</p>
+  <button onclick="load()">Refresh</button>
+  <div id="runs" style="margin-top:20px"></div>
+  <script>
+    async function load() {
+      const el = document.getElementById('runs');
+      el.innerHTML = '<p>Loading…</p>';
+      try {
+        const index = await fetch('/runs/index.json').then(r => r.json());
+        if (!index.length) {
+          el.innerHTML = '<p>No runs yet. Execute <code>./scripts/ui-e2e/run.sh</code> after creating <code>config/e2e.env</code>.</p>';
+          return;
+        }
+        el.innerHTML = '';
+        for (const meta of index) {
+          const report = await fetch(`/runs/${meta.run_id}/report.json`).then(r => r.json());
+          const div = document.createElement('div');
+          div.className = 'run ' + (report.passed ? 'pass' : 'fail');
+          const tests = (report.tests || []).map(t =>
+            `<div class="tests ${t.status==='passed'?'ok':'bad'}">${t.status.toUpperCase()} — ${t.name}</div>`
+          ).join('');
+          div.innerHTML = `
+            <strong>${report.run_id}</strong> — ${report.passed ? 'PASSED' : 'FAILED'}
+            <div class="sub">${report.finished_at}</div>
+            ${tests || '<div class="sub">No test cases parsed (see xcodebuild.log)</div>'}
+            <details><summary>Audit log tail</summary><pre>${escapeHtml(report.audit_tail || '(none)')}</pre></details>
+          `;
+          el.appendChild(div);
+        }
+      } catch (e) {
+        el.innerHTML = '<p class="bad">Could not load runs. Is serve-dashboard.sh running?</p>';
+      }
+    }
+    function escapeHtml(s) {
+      return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    }
+    load();
+  </script>
+</body>
+</html>
