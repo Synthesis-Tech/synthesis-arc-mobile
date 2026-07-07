@@ -22,11 +22,21 @@ class AppConfig: ObservableObject {
 
     @AppStorage("fleet.showOffline") var showOfflineAgents = true
 
+    @AppStorage("display.appearance") var appearanceRaw = AppAppearance.system.rawValue
+
+    var appearance: AppAppearance {
+        get { AppAppearance(rawValue: appearanceRaw) ?? .system }
+        set { appearanceRaw = newValue.rawValue }
+    }
+
     /// Optional path to a synced roster JSON (macOS dev). Empty → bundled fleet-roster.json.
     @AppStorage("fleet.rosterPath") var fleetRosterPath = ""
 
     /// Optional ops-graph stats JSON URL (e.g. file:// or http://). Empty → posture card hidden.
     @AppStorage("opsGraph.statsURL") var opsGraphStatsURL = ""
+
+    /// Automatic usability issue logging — structured events uploaded to graphd blackboard (no message text).
+    @AppStorage("tracing.autoIssueLogging") var autoIssueLogging = true
 
     @AppStorage("notifications.enabled") var notificationsEnabled = true
     @AppStorage("notifications.critical") var notificationsCritical = true
@@ -52,6 +62,24 @@ class AppConfig: ObservableObject {
     // Legacy keys migrated on first read
     init() {
         migrateLegacySettings()
+        // Skip audit logging during singleton init — audit → UsabilityTrace → AppConfig deadlocks.
+        applyE2EEnvironment(logToAudit: false)
+    }
+
+    /// Injects graphd credentials from launch environment (UI E2E harness / XCUITest).
+    func applyE2EEnvironment(logToAudit: Bool = true) {
+        let env = ProcessInfo.processInfo.environment
+        guard env["FORGE_E2E"] == "1" || env["FORGE_GRAPH_API_KEY"] != nil else { return }
+        if let host = env["FORGE_GRAPH_HOST"], !host.isEmpty { graphdHost = host }
+        if let port = env["FORGE_GRAPH_PORT"], let value = Int(port) { graphdPort = value }
+        if let key = env["FORGE_GRAPH_API_KEY"], !key.isEmpty { apiKey = key }
+        if let agent = env["FORGE_GRAPH_AGENT"], !agent.isEmpty { agentName = agent }
+        if logToAudit, env["FORGE_E2E"] == "1" {
+            CoordinationAuditLog.shared.log(
+                "E2E config applied — host \(graphdHost):\(graphdPort), agent \(agentName), key \(apiKey.isEmpty ? "missing" : "set")",
+                category: .settings
+            )
+        }
     }
 
     private func migrateLegacySettings() {
@@ -72,11 +100,41 @@ class AppConfig: ObservableObject {
 
 struct SettingsView: View {
     @ObservedObject var config = AppConfig.shared
+    @EnvironmentObject var fleetService: FleetService
+    @EnvironmentObject var streamService: CoordinationStreamService
+    @EnvironmentObject var channelService: ChannelService
+    @EnvironmentObject var dmService: DMService
     @State private var testResult: String?
     @State private var isTesting = false
+    @State private var isReconnecting = false
+    @State private var reconnectResult: String?
 
     var body: some View {
         Form {
+            Section("Connection") {
+                Button {
+                    Task { await applyAndReconnect() }
+                } label: {
+                    HStack {
+                        if isReconnecting {
+                            ProgressView().controlSize(.small)
+                        }
+                        Text(isReconnecting ? "Reconnecting…" : "Apply & Reconnect")
+                    }
+                }
+                .disabled(isReconnecting || config.apiKey.isEmpty)
+
+                if let reconnectResult {
+                    Text(reconnectResult)
+                        .font(.caption)
+                        .foregroundStyle(reconnectResult.contains("✓") ? .green : .red)
+                }
+
+                Text("Re-boots your peer session and restarts the SSE stream with the settings above.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Forge Graph Connection") {
                 TextField("Host (Tailscale IP)", text: $config.graphdHost)
                     #if os(iOS)
@@ -134,6 +192,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            AppearancePickerSection(selection: Binding(
+                get: { config.appearance },
+                set: { config.appearance = $0 }
+            ))
+
             Section("Display") {
                 HStack {
                     Text("Polling Interval")
@@ -164,8 +227,24 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Diagnostics") {
+                Toggle("Automatic issue logging", isOn: $config.autoIssueLogging)
+                Text("Logs usability events and errors automatically. Uploads to graphd blackboard — never includes message text or API keys.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                NavigationLink {
+                    DiagnosticsPanelView()
+                } label: {
+                    Label("Connection Diagnostics", systemImage: "waveform.path.ecg")
+                }
+                Text("Live status, config snapshot, and session audit log for troubleshooting.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("About") {
-                LabeledContent("App", value: "Synthesis Arc Fleet")
+                LabeledContent("App", value: "Forge Commander")
                 LabeledContent("Phase", value: "L4 — Director Console")
                 LabeledContent("Backend", value: "forge-graphd :9090")
                 LabeledContent("Transport", value: "Tailscale → /api/v1")
@@ -186,16 +265,55 @@ struct SettingsView: View {
 
         do {
             let healthy = try await client.health()
-            if healthy {
-                _ = try await client.boot(summary: "\(config.agentName) — connection test")
-                testResult = "✓ Graphd OK — boot succeeded"
-            } else {
+            guard healthy else {
                 testResult = "✗ Graphd unhealthy"
+                isTesting = false
+                return
             }
+            let peers = try await client.listPeers()
+            let sseStatus = streamService.connectionStatusLabel
+            testResult = "✓ Graphd OK — \(peers.count) peers, \(sseStatus)"
+            CoordinationAuditLog.shared.log(
+                "Connection test OK — \(peers.count) peers, \(sseStatus)",
+                category: .settings
+            )
         } catch {
             testResult = "✗ \(error.localizedDescription)"
+            CoordinationAuditLog.shared.log(
+                "Connection test failed: \(error.localizedDescription)",
+                category: .settings,
+                level: .error
+            )
         }
 
         isTesting = false
+    }
+
+    private func applyAndReconnect() async {
+        isReconnecting = true
+        reconnectResult = nil
+        await fleetService.applySettingsAndReconnect(
+            streamService: streamService,
+            channelService: channelService,
+            dmService: dmService
+        )
+        let sseLive = await streamService.waitForConnection(timeout: 30)
+        reconnectResult = Self.reconnectSummary(isBooted: fleetService.isBooted, sseLive: sseLive)
+        CoordinationAuditLog.shared.log(
+            "Apply & Reconnect finished — \(reconnectResult ?? "unknown")",
+            category: .settings,
+            level: reconnectResult?.contains("✓") == true ? .info : .warn
+        )
+        isReconnecting = false
+    }
+
+    private static func reconnectSummary(isBooted: Bool, sseLive: Bool) -> String {
+        if isBooted && sseLive {
+            return "✓ Live — booted and SSE connected"
+        }
+        if isBooted {
+            return "⚠ Booted but SSE still connecting — REST polling active"
+        }
+        return "✗ Reconnect finished but boot may have failed"
     }
 }
