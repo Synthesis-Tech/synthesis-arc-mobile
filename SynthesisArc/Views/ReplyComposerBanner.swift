@@ -1,53 +1,60 @@
 import SwiftUI
 
-/// Slack-style reply bar — shows who/what you're replying to plus a content snippet and message ref.
+/// Compact reply chrome — single-line header, no quote block (preview is in the thread).
 struct ReplyComposerBanner: View {
     let context: ReplyContext
+    var showChannelTag: Bool = true
     var onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(Color.blue)
-                .frame(width: 3)
+        HStack(spacing: 6) {
+            Image(systemName: "arrowshape.turn.up.left")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(context.prefersDirectMessage ? .blue : .orange)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrowshape.turn.up.left.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.blue)
+            Text("Reply to \(context.compactSenderLabel)")
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
 
-                    Text("Replying to \(context.senderLabel)")
-                        .font(.caption.bold())
-                        .foregroundStyle(.blue)
+            deliveryBadge
 
-                    Text(context.referenceTag)
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.tertiary)
+            Text(context.compactReference)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
 
-                    if let channel = context.channelName {
-                        Text("#\(channel)")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Text(context.truncatedPreview)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            if showChannelTag, let channel = context.channelName {
+                Text("#\(channel)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary.opacity(0.6))
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)
 
             Button(action: onDismiss) {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
+                    .padding(3)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Cancel reply")
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color.blue.opacity(0.08))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+    }
+
+    @ViewBuilder
+    private var deliveryBadge: some View {
+        Text(context.deliveryLabel.uppercased())
+            .font(.system(size: 8, weight: .bold, design: .rounded))
+            .foregroundStyle(context.prefersDirectMessage ? .blue : .orange)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(
+                (context.prefersDirectMessage ? Color.blue : Color.orange).opacity(0.14)
+            )
+            .clipShape(Capsule())
     }
 }

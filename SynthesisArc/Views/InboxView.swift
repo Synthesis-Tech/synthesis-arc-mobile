@@ -5,6 +5,8 @@ struct InboxView: View {
     @EnvironmentObject var streamService: CoordinationStreamService
     @EnvironmentObject var dmService: DMService
     @EnvironmentObject var fleetService: FleetService
+    @EnvironmentObject var commandCenterState: CommandCenterState
+    @State private var navigationPath = NavigationPath()
     @State private var isLoading = false
     @State private var error: String?
 
@@ -12,17 +14,21 @@ struct InboxView: View {
         AppConfig.shared.makeClient()
     }
 
-    private var conversations: [DMConversationSummary] {
-        dmService.conversationSummaries()
+    private var conversations: [RecentConversationSummary] {
+        dmService.unifiedConversations()
+    }
+
+    private var hasInboxContent: Bool {
+        !conversations.isEmpty
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
-                if isLoading && conversations.isEmpty {
+                if isLoading && !hasInboxContent {
                     ProgressView("Loading inbox...")
                         .padding(.top, 40)
-                } else if let error, conversations.isEmpty {
+                } else if let error, !hasInboxContent {
                     VStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
@@ -33,7 +39,7 @@ struct InboxView: View {
                         Button("Retry") { Task { await loadInbox() } }
                     }
                     .padding(.top, 40)
-                } else if conversations.isEmpty {
+                } else if !hasInboxContent {
                     ContentUnavailableView(
                         "No Messages",
                         systemImage: "tray",
@@ -42,11 +48,14 @@ struct InboxView: View {
                             : "DMs appear when forge-graphd is reachable")
                     )
                 } else {
-                    List(conversations) { conversation in
-                        NavigationLink {
-                            DMView(peer: peer(for: conversation.senderAgentName))
-                        } label: {
-                            conversationRow(conversation)
+                    List {
+                        ForEach(conversations) { conversation in
+                            NavigationLink(value: conversation.peerAgentName) {
+                                RecentConversationRow(
+                                    summary: conversation,
+                                    unreadCount: dmService.unreadCount(from: conversation.peerAgentName)
+                                )
+                            }
                         }
                     }
                 }
@@ -67,41 +76,28 @@ struct InboxView: View {
             .refreshable {
                 await loadInbox()
             }
-            .onAppear {
-                streamService.markInboxRead()
+            .navigationDestination(for: String.self) { sender in
+                DMView(
+                    peer: peer(for: sender),
+                    draftKeyOverride: ComposerDraftStore.inboxKey(sender)
+                )
+                .onAppear {
+                    Task {
+                        await dmService.markConversationDelivered(sender: sender)
+                        await dmService.hydrateThreadContent(for: sender)
+                    }
+                }
+            }
+            .onChange(of: commandCenterState.deepLinkEpoch) { _, _ in
+                openDeepLinkedInboxIfNeeded()
             }
         }
     }
 
-    private func conversationRow(_ conversation: DMConversationSummary) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(displayName(for: conversation.senderAgentName))
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.blue)
-                Spacer()
-                Text(conversation.latestMessage.sentAtDisplay)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            Text(conversation.latestMessage.content)
-                .font(.callout)
-                .lineLimit(2)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
-            if conversation.messageCount > 1 {
-                Text("\(conversation.messageCount) messages")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private func displayName(for agentName: String) -> String {
-        agentName.split(separator: "-")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
+    private func openDeepLinkedInboxIfNeeded() {
+        guard commandCenterState.phoneTab == .inbox,
+              let sender = commandCenterState.selectedInboxSender else { return }
+        navigationPath = NavigationPath([sender])
     }
 
     private func peer(for agentName: String) -> Peer {
@@ -122,6 +118,7 @@ struct InboxView: View {
         do {
             let polled = try await client.pollMessages()
             streamService.seedInbox(polled)
+            await dmService.hydrateAllEmptyMessages()
         } catch {
             self.error = error.localizedDescription
         }

@@ -9,23 +9,35 @@ actor ForgeGraphClient {
     private let apiKey: String
     private let agentId: String
     private let session: URLSession
+    /// Long-lived SSE — same default ATS profile as REST, extended read timeouts only.
+    private let streamSession: URLSession
 
     init(host: String, port: Int, apiKey: String, agentId: String) {
         self.baseURL = URL(string: "http://\(host):\(port)")!
         self.apiKey = apiKey
         self.agentId = agentId
 
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15
-        config.timeoutIntervalForResource = 45
-        self.session = URLSession(configuration: config)
+        let restConfig = URLSessionConfiguration.default
+        restConfig.timeoutIntervalForRequest = 15
+        restConfig.timeoutIntervalForResource = 45
+        self.session = URLSession(configuration: restConfig)
+
+        let streamConfig = URLSessionConfiguration.default
+        streamConfig.timeoutIntervalForRequest = 120
+        streamConfig.timeoutIntervalForResource = 86_400
+        self.streamSession = URLSession(configuration: streamConfig)
+    }
+
+    /// The exact graphd base URL used for REST — logged for SSE diagnostics.
+    var graphdBaseURLString: String {
+        baseURL.absoluteString
     }
 
     // MARK: - Boot
 
     func boot(
         channels: [String] = ["engineering", "ops"],
-        summary: String = "iOS Fleet App"
+        summary: String = "Forge Commander"
     ) async throws -> BootResponse {
         let body: [String: Any] = [
             "pid": ProcessInfo.processInfo.processIdentifier,
@@ -55,13 +67,32 @@ actor ForgeGraphClient {
         return try JSONDecoder().decode([Channel].self, from: data)
     }
 
+    func createChannel(
+        name: String,
+        description: String? = nil,
+        visibility: ChannelVisibility = .public
+    ) async throws -> NodeId {
+        var body: [String: Any] = ["name": name]
+        if let description, !description.isEmpty {
+            body["description"] = description
+        }
+        body["visibility"] = visibility == .private ? "private" : "public"
+        let data = try await post("/api/v1/channels", body: body)
+        struct CreateResponse: Decodable { let channel_id: UInt64 }
+        return try JSONDecoder().decode(CreateResponse.self, from: data).channel_id
+    }
+
+    func joinChannel(name: String) async throws {
+        _ = try await post("/api/v1/channels/\(name.urlPathEncoded)/join", body: [:])
+    }
+
     func channelHistory(name: String, limit: Int = 50) async throws -> [CoordMessage] {
         let path = "/api/v1/channels/\(name.urlPathEncoded)/history?limit=\(limit)"
         let data = try await get(path)
         return try JSONDecoder().decode([CoordMessage].self, from: data)
     }
 
-    func sendChannelMessage(channel: String, content: String, replyTo: NodeId? = nil) async throws {
+    func sendChannelMessage(channel: String, content: String, replyTo: NodeId? = nil) async throws -> NodeId? {
         var body: [String: Any] = [
             "content": content,
             "message_type": "text"
@@ -69,18 +100,45 @@ actor ForgeGraphClient {
         if let replyTo {
             body["reply_to"] = replyTo
         }
-        _ = try await post("/api/v1/channels/\(channel.urlPathEncoded)/send", body: body)
+        let data = try await post("/api/v1/channels/\(channel.urlPathEncoded)/send", body: body)
+        struct SendResponse: Decodable { let message_id: UInt64? }
+        return try? JSONDecoder().decode(SendResponse.self, from: data).message_id
     }
 
     // MARK: - DMs
 
-    func sendDM(to: String, content: String) async throws {
+    func sendDM(to: String, content: String) async throws -> NodeId? {
         let body: [String: Any] = [
             "to": to,
             "content": content,
             "message_type": "text"
         ]
-        _ = try await post("/api/v1/messages/send", body: body)
+        let data = try await post("/api/v1/messages/send", body: body)
+        struct SendResponse: Decodable { let message_id: UInt64? }
+        return try JSONDecoder().decode(SendResponse.self, from: data).message_id
+    }
+
+    /// Fetch message body from graph node properties when poll/history omitted content.
+    func fetchNodeContent(id: NodeId) async throws -> String? {
+        let data = try await get("/api/v1/nodes/\(id)")
+        return Self.extractNodeStringProperty(named: "content", from: data)
+    }
+
+    private static func extractNodeStringProperty(named key: String, from data: Data) -> String? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let node = root["data"] as? [String: Any],
+              let properties = node["properties"] as? [String: Any],
+              let value = properties[key] else {
+            return nil
+        }
+        if let string = value as? String {
+            return string
+        }
+        if let tagged = value as? [String: Any] {
+            if let string = tagged["String"] as? String { return string }
+            if let string = tagged["string"] as? String { return string }
+        }
+        return nil
     }
 
     func pollMessages() async throws -> [CoordMessage] {
@@ -118,6 +176,27 @@ actor ForgeGraphClient {
     func getBlackboard(key: String) async throws -> BlackboardEntry? {
         let data = try await get("/api/v1/blackboard/\(key.urlPathEncoded)")
         return try? JSONDecoder().decode(BlackboardEntry.self, from: data)
+    }
+
+    // MARK: - SSE
+
+    /// Open the coordination event stream using the same host/scheme as REST (ATS-safe on device).
+    func openCoordinationStream() async throws -> (URLSession.AsyncBytes, URLResponse) {
+        guard apiKey.isEmpty == false else {
+            throw ForgeGraphError.missingApiKey
+        }
+        guard let url = URL(string: "\(baseURL.absoluteString)/api/v1/events/coordination") else {
+            throw ForgeGraphError.invalidURL("/api/v1/events/coordination")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 120
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("ApiKey \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(agentId, forHTTPHeaderField: "X-Agent-Id")
+
+        return try await streamSession.bytes(for: request)
     }
 
     // MARK: - Health
@@ -200,6 +279,33 @@ enum ForgeGraphError: Error, LocalizedError {
         case .apiError(let code, let msg): return "HTTP \(code): \(msg)"
         case .missingApiKey: return "API key required — configure in Settings"
         case .decodingError(let msg): return "Decode: \(msg)"
+        }
+    }
+
+    var isForbidden: Bool {
+        switch self {
+        case .httpError(403), .apiError(403, _): return true
+        default: return false
+        }
+    }
+}
+
+extension Error {
+    var isForbiddenChannelAccess: Bool {
+        (self as? ForgeGraphError)?.isForbidden == true
+    }
+
+    var isAlreadyChannelMember: Bool {
+        guard let error = self as? ForgeGraphError else { return false }
+        switch error {
+        case .apiError(let code, let message):
+            let lowered = message.lowercased()
+            return code == 409
+                || lowered.contains("already a member")
+                || lowered.contains("already joined")
+                || lowered.contains("already in")
+        default:
+            return false
         }
     }
 }

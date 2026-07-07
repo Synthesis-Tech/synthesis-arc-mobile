@@ -18,6 +18,19 @@ enum MessageType: String, Codable {
     case response = "Response"
     case handoff = "Handoff"
     case broadcast = "Broadcast"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        switch raw.lowercased() {
+        case "text": self = .text
+        case "query": self = .query
+        case "response": self = .response
+        case "handoff": self = .handoff
+        case "broadcast": self = .broadcast
+        default: self = .text
+        }
+    }
 }
 
 enum ChannelVisibility: String, Codable {
@@ -65,11 +78,18 @@ struct Peer: Codable, Identifiable {
 // MARK: - Channel Preview
 
 struct ChannelPreview: Equatable {
+    /// Truncated inbox-style body — never raw `msg/id` metadata.
     let lastContent: String
     let lastFrom: String
     let lastTimestamp: Int64
+    let isOutbound: Bool
 
+    /// List row subtitle: `sender: preview…` or `You: preview…`
     var previewLine: String {
+        guard !lastContent.isEmpty else { return "" }
+        if isOutbound {
+            return "You: \(lastContent)"
+        }
         let sender = lastFrom.isEmpty ? "unknown" : lastFrom
         return "\(sender): \(lastContent)"
     }
@@ -124,15 +144,79 @@ struct CoordMessage: Codable, Identifiable {
 
     /// Whether this message was sent by `peerAgentName` in a bilateral thread.
     func isFromPeer(peerAgentName: String, localAgent: String) -> Bool {
+        if toAgentName != nil {
+            return false
+        }
         if let from = fromAgentName {
             if from == localAgent { return false }
             return from == peerAgentName
         }
-        if let to = toAgentName {
-            return to == peerAgentName
-        }
         // REST-polled inbound DMs: sender session id in `from`, no agent name yet.
         return from != nil
+    }
+
+    /// User-visible body with reply/quote metadata stripped (Slack-style).
+    var readableBody: String {
+        ReplyContext.stripNestedQuotes(from: content)
+    }
+
+    var hasDisplayableContent: Bool {
+        !readableBody.isEmpty || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var hasReadableBody: Bool {
+        !readableBody.isEmpty
+    }
+
+    /// Inbox row / notification preview — never raw `msg/id` metadata.
+    var inboxPreview: String {
+        if !readableBody.isEmpty {
+            return ReplyContext.truncate(readableBody, maxLength: 120)
+        }
+        if let quoted = extractQuotedSnippet() {
+            return ReplyContext.truncate(quoted, maxLength: 120)
+        }
+        return ""
+    }
+
+    private func extractQuotedSnippet() -> String? {
+        for line in content.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix(">") else { continue }
+            let body = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+            if body.isEmpty { continue }
+            let lowered = body.lowercased()
+            if lowered.hasPrefix("replying to msg/")
+                || lowered.hasPrefix("scope:")
+                || lowered.hasPrefix("from @")
+                || lowered.hasPrefix("in #") {
+                continue
+            }
+            return body
+        }
+        return nil
+    }
+
+    func with(
+        id: NodeId? = nil,
+        content: String? = nil,
+        fromAgentName: String? = nil,
+        toAgentName: String? = nil,
+        sentAtUnixMs: Int64? = nil
+    ) -> CoordMessage {
+        CoordMessage(
+            id: id ?? self.id,
+            from: from,
+            channel: channel,
+            dmTo: dmTo,
+            content: content ?? self.content,
+            messageType: messageType,
+            replyTo: replyTo,
+            sentAtUnixMs: sentAtUnixMs ?? self.sentAtUnixMs,
+            pinned: pinned,
+            fromAgentName: fromAgentName ?? self.fromAgentName,
+            toAgentName: toAgentName ?? self.toAgentName
+        )
     }
 
     func isFromLocalAgent(_ localAgent: String) -> Bool {
@@ -145,9 +229,22 @@ struct CoordMessage: Codable, Identifiable {
 
     var sentAtDisplay: String {
         if sentAtUnixMs > 0 {
-            return TimeFormat.fromUnixMs(sentAtUnixMs)
+            return TimeFormat.listTimestamp(fromUnixMs: sentAtUnixMs)
         }
         return ""
+    }
+
+    /// Full date + time for message bubbles (e.g. "Jul 3, 2026 at 2:45 PM").
+    var sentAtFullDisplay: String {
+        if sentAtUnixMs > 0 {
+            return TimeFormat.messageTimestamp(fromUnixMs: sentAtUnixMs)
+        }
+        return ""
+    }
+
+    /// Channel name embedded in a quoted DM reply block, if present.
+    var embeddedChannelReference: String? {
+        ReplyContext.extractChannelReference(from: content)
     }
 
     /// Build a display message from an SSE peer_message event.
@@ -278,14 +375,38 @@ struct CoordSseEvent: Codable {
 // MARK: - Time Formatting
 
 enum TimeFormat {
-    static func fromUnixMs(_ ms: Int64) -> String {
+    /// Compact stamp for list rows — today shows time only; older messages show date + time.
+    static func listTimestamp(fromUnixMs ms: Int64) -> String {
+        guard ms > 0 else { return "" }
         let date = Date(timeIntervalSince1970: TimeInterval(ms) / 1000)
-        return formatter.string(from: date)
+        if Calendar.current.isDateInToday(date) {
+            return timeFormatter.string(from: date)
+        }
+        if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday \(timeFormatter.string(from: date))"
+        }
+        return shortDateTimeFormatter.string(from: date)
+    }
+
+    /// Full stamp for message bubbles.
+    static func messageTimestamp(fromUnixMs ms: Int64) -> String {
+        guard ms > 0 else { return "" }
+        let date = Date(timeIntervalSince1970: TimeInterval(ms) / 1000)
+        if Calendar.current.isDateInToday(date) {
+            return "Today at \(timeFormatter.string(from: date))"
+        }
+        if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday at \(timeFormatter.string(from: date))"
+        }
+        return fullDateTimeFormatter.string(from: date)
+    }
+
+    static func fromUnixMs(_ ms: Int64) -> String {
+        listTimestamp(fromUnixMs: ms)
     }
 
     static func fromUnixSeconds(_ seconds: Int64) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(seconds))
-        return formatter.string(from: date)
+        messageTimestamp(fromUnixMs: seconds * 1000)
     }
 
     static func relative(fromUnixMs ms: Int64) -> String {
@@ -296,12 +417,27 @@ enum TimeFormat {
         if interval < 3600 { return "\(Int(interval / 60))m" }
         if interval < 86_400 { return "\(Int(interval / 3600))h" }
         if interval < 604_800 { return "\(Int(interval / 86_400))d" }
-        return formatter.string(from: date)
+        return shortDateTimeFormatter.string(from: date)
     }
 
-    private static let formatter: DateFormatter = {
+    private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static let shortDateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static let fullDateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .short
         return f
     }()
 }
