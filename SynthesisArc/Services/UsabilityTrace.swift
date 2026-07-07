@@ -74,7 +74,7 @@ final class UsabilityTrace: ObservableObject {
     // MARK: - Public API
 
     func trace(_ name: String, context: [String: String] = [:]) {
-        guard AppConfig.shared.autoIssueLogging else { return }
+        guard Self.autoIssueLoggingEnabled else { return }
         let event = TraceEvent(name: name, context: sanitize(context))
         recentEvents.insert(event, at: 0)
         if recentEvents.count > eventCapacity {
@@ -117,7 +117,7 @@ final class UsabilityTrace: ObservableObject {
         severity: Severity = .error,
         context: [String: String] = [:]
     ) {
-        guard AppConfig.shared.autoIssueLogging else { return }
+        guard Self.autoIssueLoggingEnabled else { return }
         guard !E2EMode.isActive else { return }
 
         let issue = PendingIssue(
@@ -199,6 +199,12 @@ final class UsabilityTrace: ObservableObject {
     }
 
     // MARK: - Private
+
+    /// Reads the tracing toggle without touching `AppConfig.shared` (avoids launch deadlock).
+    private static var autoIssueLoggingEnabled: Bool {
+        if AppConfig.isConstructing { return false }
+        return UserDefaults.standard.object(forKey: "tracing.autoIssueLogging") as? Bool ?? true
+    }
 
     private func signature(
         for category: CoordinationAuditLog.Category,

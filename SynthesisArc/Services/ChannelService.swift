@@ -558,7 +558,7 @@ class ChannelService: ObservableObject {
         let key = joinedChannelsStorageKey()
         guard let names = UserDefaults.standard.array(forKey: key) as? [String] else { return }
         joinedChannels = Set(names)
-        if !names.isEmpty {
+        if !names.isEmpty, !AppConfig.isConstructing {
             CoordinationAuditLog.shared.log(
                 "Restored \(names.count) persisted channel membership(s)",
                 category: .channel

@@ -10,8 +10,13 @@ final class FieldReportUploader {
 
     private init() {}
 
+    private static var autoIssueLoggingEnabled: Bool {
+        if AppConfig.isConstructing { return false }
+        return UserDefaults.standard.object(forKey: "tracing.autoIssueLogging") as? Bool ?? true
+    }
+
     func scheduleFlush(delaySeconds: TimeInterval = 8) {
-        guard AppConfig.shared.autoIssueLogging else { return }
+        guard Self.autoIssueLoggingEnabled else { return }
         flushTask?.cancel()
         flushTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
@@ -21,7 +26,7 @@ final class FieldReportUploader {
     }
 
     func flushPending() async {
-        guard AppConfig.shared.autoIssueLogging else { return }
+        guard Self.autoIssueLoggingEnabled else { return }
         guard !E2EMode.isActive else { return }
         guard !isUploading else { return }
 

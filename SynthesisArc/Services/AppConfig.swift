@@ -4,7 +4,15 @@ import SwiftUI
 /// App configuration — forge-graphd connection, display preferences
 @MainActor
 class AppConfig: ObservableObject {
-    static let shared = AppConfig()
+    /// True only while `shared` is running `init()` — breaks audit → trace → shared re-entry deadlocks.
+    static private(set) var isConstructing = false
+
+    static let shared: AppConfig = {
+        isConstructing = true
+        let instance = AppConfig()
+        isConstructing = false
+        return instance
+    }()
 
     /// Graphd host — localhost for simulator; Tailscale IP for physical device
     /// (e.g. 100.123.250.101 gmktec-k9 always-on, 100.111.226.82 macbook-pro)

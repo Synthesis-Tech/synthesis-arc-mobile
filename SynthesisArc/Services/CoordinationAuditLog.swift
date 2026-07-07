@@ -75,6 +75,7 @@ final class CoordinationAuditLog: ObservableObject {
         }
         appendToDisk(entry.line)
         print("[Audit] \(entry.line)")
+        guard !AppConfig.isConstructing else { return }
         UsabilityTrace.shared.ingestAudit(message: message, category: category, level: level)
     }
 
