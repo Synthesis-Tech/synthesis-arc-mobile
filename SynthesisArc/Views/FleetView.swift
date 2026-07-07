@@ -3,9 +3,11 @@ import SwiftUI
 /// Fleet View — department-grouped agent grid with search and watchlist
 struct FleetView: View {
     @EnvironmentObject var fleetService: FleetService
+    @EnvironmentObject var commandCenterState: CommandCenterState
     @AppStorage(FleetWatchlist.storageKey) private var watchlistRaw = ""
     @State private var searchText = ""
     @State private var collapsedSections: Set<String> = []
+    @State private var quickDMPeer: Peer?
 
     private let columns = [
         GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12)
@@ -59,7 +61,30 @@ struct FleetView: View {
                     }
                 }
             }
+            .sheet(item: $quickDMPeer) { peer in
+                NavigationStack {
+                    DMView(peer: peer)
+                }
+            }
+            .onChange(of: commandCenterState.deepLinkEpoch) { _, _ in
+                openDeepLinkedFleetDMIfNeeded()
+            }
         }
+    }
+
+    private func openDeepLinkedFleetDMIfNeeded() {
+        guard commandCenterState.phoneTab == .fleet,
+              commandCenterState.fleetDetailMode == .dm,
+              let agentName = commandCenterState.selectedAgentName else { return }
+        quickDMPeer = fleetService.peers.first { $0.agentName == agentName }
+            ?? Peer(
+                agentName: agentName,
+                pid: nil,
+                cwd: nil,
+                gitRoot: nil,
+                summary: nil,
+                status: .offline
+            )
     }
 
     // MARK: - States
@@ -183,6 +208,10 @@ struct FleetView: View {
                             attentionScore: score,
                             onTogglePin: {
                                 FleetWatchlist.toggle(peer.agentName, in: &watchlistRaw)
+                            },
+                            onQuickDM: { quickDMPeer = peer },
+                            onQuickMention: {
+                                FleetClipboard.copy("@\(peer.agentName)")
                             }
                         )
                     }
@@ -207,7 +236,9 @@ struct FleetView: View {
                     onToggleCollapse: { toggleSection(section.id) },
                     onTogglePin: { agentName in
                         FleetWatchlist.toggle(agentName, in: &watchlistRaw)
-                    }
+                    },
+                    onQuickDM: { quickDMPeer = $0 },
+                    onQuickMention: { FleetClipboard.copy("@\($0.agentName)") }
                 )
             }
         }
@@ -233,6 +264,8 @@ private struct FleetSectionView: View {
     let watchlist: Set<String>
     let onToggleCollapse: () -> Void
     let onTogglePin: (String) -> Void
+    var onQuickDM: (Peer) -> Void = { _ in }
+    var onQuickMention: (Peer) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -273,7 +306,9 @@ private struct FleetSectionView: View {
                             AgentCard(
                                 peer: peer,
                                 isPinned: watchlist.contains(peer.agentName),
-                                onTogglePin: { onTogglePin(peer.agentName) }
+                                onTogglePin: { onTogglePin(peer.agentName) },
+                                onQuickDM: { onQuickDM(peer) },
+                                onQuickMention: { onQuickMention(peer) }
                             )
                         }
                         .buttonStyle(.plain)
@@ -303,11 +338,15 @@ struct AgentCard: View {
     var needsAttention: Bool = false
     var attentionScore: Int = 0
     var onTogglePin: (() -> Void)?
+    var onQuickDM: (() -> Void)?
+    var onQuickMention: (() -> Void)?
+    @State private var isHovered = false
+    @State private var showQuickActions = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                statusDot
+                AgentAvatarView(agentName: peer.agentName, size: 28)
                 Text(peer.displayName)
                     .font(.system(.subheadline, weight: .semibold))
                     .lineLimit(1)
@@ -343,6 +382,69 @@ struct AgentCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(statusBorderColor, lineWidth: needsAttention ? 2 : 1)
         )
+        .overlay(alignment: .bottomTrailing) {
+            if showCardQuickActions {
+                HStack(spacing: 4) {
+                    if let onQuickDM {
+                        cardQuickButton(icon: "envelope.fill", tint: .indigo, label: "DM", action: onQuickDM)
+                    }
+                    if let onQuickMention {
+                        cardQuickButton(icon: "at", tint: .blue, label: "Mention", action: onQuickMention)
+                    }
+                }
+                .padding(6)
+            }
+        }
+        #if os(macOS)
+        .onHover { isHovered = $0 }
+        #else
+        .onLongPressGesture(minimumDuration: 0.35) {
+            showQuickActions.toggle()
+        }
+        #endif
+        .contextMenu {
+            if let onQuickDM {
+                Button { onQuickDM() } label: {
+                    Label("Send DM", systemImage: "envelope.fill")
+                }
+            }
+            if let onQuickMention {
+                Button { onQuickMention() } label: {
+                    Label("Copy @\(peer.agentName)", systemImage: "at")
+                }
+            }
+            Button {
+                FleetClipboard.copy(peer.agentName)
+            } label: {
+                Label("Copy agent ID", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    private var showCardQuickActions: Bool {
+        #if os(iOS)
+        return isHovered || showQuickActions
+        #else
+        return isHovered
+        #endif
+    }
+
+    private func cardQuickButton(
+        icon: String,
+        tint: Color,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 26, height: 24)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .help(label)
     }
 
     private var cardBackground: some ShapeStyle {
@@ -354,12 +456,6 @@ struct AgentCard: View {
 
     private var attentionBackgroundColor: Color {
         attentionScore >= 80 ? .red : .orange
-    }
-
-    private var statusDot: some View {
-        Circle()
-            .fill(statusDotColor)
-            .frame(width: 8, height: 8)
     }
 
     private var statusDotColor: Color {

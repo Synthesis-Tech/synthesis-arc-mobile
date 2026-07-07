@@ -3,27 +3,43 @@ import SwiftUI
 /// Agent detail drill-down from Fleet View
 struct AgentDetailView: View {
     let peer: Peer
+    var usesInlineDM: Bool = false
+    var onOpenInlineDM: (() -> Void)?
     @EnvironmentObject var channelService: ChannelService
+    @EnvironmentObject var fleetService: FleetService
     @State private var showDirectorSheet = false
+    @State private var showDM = false
+    @State private var toastMessage: String?
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Identity header
+            VStack(alignment: .leading, spacing: 20) {
                 identitySection
 
-                // Blackboard status
+                AgentQuickActionsPanel(
+                    peer: peer,
+                    onDM: {
+                        if usesInlineDM, let onOpenInlineDM {
+                            onOpenInlineDM()
+                        } else {
+                            showDM = true
+                        }
+                    },
+                    onMention: {
+                        FleetClipboard.copy("@\(peer.agentName)")
+                        toastMessage = "Copied @\(peer.agentName)"
+                    },
+                    onCopyID: copyAgentID,
+                    onDirector: { showDirectorSheet = true }
+                )
+
                 if let status = peer.blackboardStatus {
                     statusSection(status)
                 }
 
-                // Summary
                 if let summary = peer.summary, !summary.isEmpty {
                     summarySection(summary)
                 }
-
-                // Quick actions
-                actionsSection
             }
             .padding()
         }
@@ -34,25 +50,45 @@ struct AgentDetailView: View {
         .sheet(isPresented: $showDirectorSheet) {
             QuickActionsSheet(peer: peer)
         }
+        .sheet(isPresented: $showDM) {
+            NavigationStack {
+                DMView(peer: peer)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let toastMessage {
+                Text(toastMessage)
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial)
+                    .clipShape(Capsule())
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            self.toastMessage = nil
+                        }
+                    }
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: toastMessage)
     }
 
     // MARK: - Sections
 
     private var identitySection: some View {
         HStack(spacing: 16) {
-            // Agent avatar placeholder
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 56, height: 56)
-                Text(initials)
-                    .font(.system(.title3, weight: .bold))
-                    .foregroundStyle(.primary)
-            }
+            AgentAvatarView(agentName: peer.agentName, size: 56)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(displayName)
                     .font(.title2.bold())
+
+                Text(peer.agentName)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
 
                 HStack(spacing: 6) {
                     Circle()
@@ -93,46 +129,6 @@ struct AgentDetailView: View {
         }
     }
 
-    private var actionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Actions", systemImage: "bolt.fill")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 12) {
-                NavigationLink(destination: DMView(peer: peer)) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "envelope.fill")
-                            .font(.title3)
-                        Text("DM")
-                            .font(.caption2)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundStyle(.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-
-                Button {
-                    showDirectorSheet = true
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "person.badge.key.fill")
-                            .font(.title3)
-                        Text("Director")
-                            .font(.caption2)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.orange.opacity(0.1))
-                    .foregroundStyle(.orange)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-            }
-        }
-    }
-
     // MARK: - Helpers
 
     private var displayName: String {
@@ -142,11 +138,6 @@ struct AgentDetailView: View {
             .joined(separator: " ")
     }
 
-    private var initials: String {
-        let parts = peer.name.split(separator: "-")
-        return parts.prefix(2).map { String($0.prefix(1).uppercased()) }.joined()
-    }
-
     private var statusDotColor: Color {
         switch peer.statusColor {
         case .green: return .green
@@ -154,5 +145,10 @@ struct AgentDetailView: View {
         case .red: return .red
         case .gray: return .gray
         }
+    }
+
+    private func copyAgentID() {
+        FleetClipboard.copy(peer.agentName)
+        toastMessage = "Copied agent ID"
     }
 }

@@ -1,17 +1,17 @@
-# Forge Command
+# Forge Commander
 
 **Official App Name for iOS and iPadOS**
 
 ## App Identity
 
-- **Name:** Forge Command
+- **Name:** Forge Commander
 - **Platforms:** iOS 16.0+, iPadOS 16.0+, macOS 13.0+
 - **Category:** Developer Tools / Team Coordination
 - **Type:** Fleet management and operational coordination
 
 ## Description
 
-Forge Command is a real-time coordination platform for distributed engineering teams. Monitor your fleet of agents, manage communication channels, track operational streams, and maintain situational awareness across your entire infrastructure.
+Forge Commander is a real-time coordination platform for distributed engineering teams. Monitor your fleet of agents, manage communication channels, track operational streams, and maintain situational awareness across your entire infrastructure.
 
 ### Key Features
 
